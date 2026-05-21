@@ -108,3 +108,7 @@
 [16:55:23] [sbx] escaped!
 [16:55:23] sbx_escape() = ok — sandbox removed
 [16:55:23] All systems ready — exploit complete
+[16:55:43] applySpoof: 40.70878, -74.00506
+[16:55:43] activateSpoof: 40.70878, -74.00506
+[16:55:43] writeSpoofPlist: ok (enabled=true, 40.70878, -74.00506)
+[16:55:43] activateSpoof: trying RC pref-reload inside locationd...
