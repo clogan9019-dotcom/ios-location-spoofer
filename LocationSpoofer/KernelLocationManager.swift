@@ -25,6 +25,12 @@ final class KernelLocationManager: NSObject, ObservableObject {
     private var workItem: DispatchWorkItem?
     private let bgLocationManager = CLLocationManager()
 
+    // Continuous spoof state
+    private var spoofLat: Double = 0
+    private var spoofLon: Double = 0
+    private var spoofTimer: DispatchSourceTimer?
+    private let spoofQueue = DispatchQueue(label: "com.locationspoofer.spoof", qos: .userInitiated)
+
     private override init() {
         super.init()
         filelog_init()
@@ -211,6 +217,22 @@ final class KernelLocationManager: NSObject, ObservableObject {
                 completion?(false); return
             }
 
+            // Escape the app sandbox so we can write to locationd's preference path.
+            // sbx_escape() patches kernel sandbox extension structures for our process,
+            // granting read-write access to the full filesystem.
+            self.flog("Escaping sandbox...")
+            DispatchQueue.main.async { self.status = "Escaping sandbox..." }
+            sbx_setlogcallback { msg in
+                guard let msg else { return }
+                let s = String(cString: msg)
+                filelog("[sbx] " + s)
+                KernelLocationManager.shared.appendLog("[sbx] " + s)
+            }
+            let selfProc = ds_get_our_proc()
+            let sbxRet = sbx_escape(selfProc)
+            self.flog("sbx_escape() = \(sbxRet == 0 ? "ok — sandbox removed" : "failed (\(sbxRet))")")
+            filelog_flush()
+
             self.flog("All systems ready — exploit complete")
             filelog_flush()
             DispatchQueue.main.async {
@@ -239,7 +261,10 @@ final class KernelLocationManager: NSObject, ObservableObject {
         UserDefaults.standard.set(lon,  forKey: kLastLon)
         UserDefaults.standard.set(true, forKey: kWasConnected)
         if exploitReady {
-            DispatchQueue.global(qos: .userInitiated).async { self.writeLocation(lat: lat, lon: lon) }
+            spoofLat = lat
+            spoofLon = lon
+            spoofQueue.async { self.writeLocation(lat: lat, lon: lon) }
+            startSpoofTimer()
         } else {
             flog("connect: kernel not ready, running exploit first")
             runExploit { [weak self] success in
@@ -254,47 +279,105 @@ final class KernelLocationManager: NSObject, ObservableObject {
         UserDefaults.standard.set(lon,  forKey: kLastLon)
         UserDefaults.standard.set(true, forKey: kWasConnected)
         flog(String(format: "applySpoof: %.5f, %.5f", lat, lon))
-        DispatchQueue.global(qos: .userInitiated).async { self.writeLocation(lat: lat, lon: lon) }
+        spoofLat = lat
+        spoofLon = lon
+        spoofQueue.async { self.writeLocation(lat: lat, lon: lon) }
+        startSpoofTimer()
     }
 
     func updateLocation(lat: Double, lon: Double) {
         guard isConnected else { return }
         UserDefaults.standard.set(lat, forKey: kLastLat)
         UserDefaults.standard.set(lon, forKey: kLastLon)
-        DispatchQueue.global(qos: .userInitiated).async { self.writeLocation(lat: lat, lon: lon) }
+        spoofLat = lat
+        spoofLon = lon
+        spoofQueue.async { self.writeLocation(lat: lat, lon: lon) }
     }
 
     func disconnect() {
         flog("disconnect: clearing spoof")
+        stopSpoofTimer()
         isConnected = false
         status = "Disconnected"
         UserDefaults.standard.set(false, forKey: kWasConnected)
     }
 
-    // MARK: - Private
+    // MARK: - Continuous spoof timer
 
-    private func writeLocation(lat: Double, lon: Double) {
-        flog(String(format: "writeLocation: %.5f, %.5f", lat, lon))
+    // locationd gets real GPS updates from the hardware continuously.
+    // We fight back by re-writing the plist and notifying locationd every
+    // kSpoofInterval seconds so the fake coordinates always win.
+    private let kSpoofInterval: Double = 3.0
+
+    private func startSpoofTimer() {
+        stopSpoofTimer()
+        let timer = DispatchSource.makeTimerSource(queue: spoofQueue)
+        timer.schedule(deadline: .now() + kSpoofInterval,
+                       repeating: kSpoofInterval,
+                       leeway: .milliseconds(500))
+        timer.setEventHandler { [weak self] in
+            guard let self, self.isConnected else { return }
+            self.writeLocation(lat: self.spoofLat, lon: self.spoofLon, silent: true)
+        }
+        timer.resume()
+        spoofTimer = timer
+        flog("spoofTimer: started (interval \(Int(kSpoofInterval))s)")
+    }
+
+    private func stopSpoofTimer() {
+        spoofTimer?.cancel()
+        spoofTimer = nil
+    }
+
+    // MARK: - Private write
+
+    private func writeLocation(lat: Double, lon: Double, silent: Bool = false) {
+        if !silent {
+            flog(String(format: "writeLocation: %.5f, %.5f", lat, lon))
+        }
 
         let plistPath = "/private/var/mobile/Library/Preferences/com.apple.locationd.plist"
-        let plistContent = locationPlist(lat: lat, lon: lon)
+        let plistData = locationPlistData(lat: lat, lon: lon)
 
+        var writeOk = false
+
+        // Primary: direct write — works after sbx_escape() removes sandbox.
         do {
             let dir = (plistPath as NSString).deletingLastPathComponent
             try FileManager.default.createDirectory(atPath: dir,
                 withIntermediateDirectories: true, attributes: nil)
-            try plistContent.write(toFile: plistPath, atomically: true, encoding: .utf8)
-            flog("writeLocation: plist written successfully")
+            try plistData.write(to: URL(fileURLWithPath: plistPath),
+                                options: [.atomic])
+            writeOk = true
+            if !silent { flog("writeLocation: plist written ok (direct)") }
         } catch {
-            flog("writeLocation: plist write failed — \(error.localizedDescription)")
+            if !silent { flog("writeLocation: direct write failed — \(error.localizedDescription)") }
         }
 
-        DispatchQueue.global(qos: .background).async { [weak self] in
-            let rcRet = rc_locationd_reload_plist()
-            if rcRet != 0 {
-                notify_locationd_direct()
+        // Fallback: write to a temp file in our sandbox, then use kernel VFS
+        // to overwrite the system plist.  vfs_overwritefile requires the
+        // destination to already exist, so we only use this if direct write
+        // succeeded at least once (meaning the file now exists).
+        if !writeOk && vfs_isready() {
+            let tmpPath = NSTemporaryDirectory() + "com.apple.locationd.plist.tmp"
+            do {
+                try plistData.write(to: URL(fileURLWithPath: tmpPath), options: [.atomic])
+                let vfsRet = vfs_overwritefile(plistPath, tmpPath)
+                writeOk = (vfsRet == 0)
+                if !silent {
+                    flog("writeLocation: vfs_overwritefile -> \(vfsRet == 0 ? "ok" : "failed (\(vfsRet))")")
+                }
+                try? FileManager.default.removeItem(atPath: tmpPath)
+            } catch {
+                if !silent { flog("writeLocation: vfs fallback failed — \(error.localizedDescription)") }
             }
-            self?.flog("writeLocation: locationd reload -> \(rcRet == 0 ? "ok (RemoteCall)" : "fallback notify (code \(rcRet))")")
+        }
+
+        // Notify locationd to reload its preferences.
+        let rcRet = rc_locationd_reload_plist()
+        if rcRet != 0 { notify_locationd_direct() }
+        if !silent {
+            flog("writeLocation: locationd notify -> \(rcRet == 0 ? "ok (rc)" : "fallback (code \(rcRet))")")
         }
 
         DispatchQueue.main.async {
@@ -304,11 +387,23 @@ final class KernelLocationManager: NSObject, ObservableObject {
         filelog_flush()
     }
 
-    private func locationPlist(lat: Double, lon: Double) -> String {
-        """
-        <?xml version=\"1.0\" encoding=\"UTF-8\"?>
-        <!DOCTYPE plist PUBLIC \"-//Apple//DTD PLIST 1.0//EN\" \"http://www.apple.com/DTDs/PropertyList-1.0.dtd\">
-        <plist version=\"1.0\">
+    private func locationPlistData(lat: Double, lon: Double) -> Data {
+        let dict: NSDictionary = [
+            "SimulatedLatitude":  lat,
+            "SimulatedLongitude": lon,
+            "SimulationEnabled":  true
+        ]
+        var err: NSError?
+        let data = try? PropertyListSerialization.data(fromPropertyList: dict,
+                                                        format: .xml,
+                                                        options: 0)
+        if let data { return data }
+        _ = err
+        // Fallback: hand-rolled XML plist
+        let xml = """
+        <?xml version="1.0" encoding="UTF-8"?>
+        <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+        <plist version="1.0">
         <dict>
             <key>SimulatedLatitude</key><real>\(lat)</real>
             <key>SimulatedLongitude</key><real>\(lon)</real>
@@ -316,6 +411,7 @@ final class KernelLocationManager: NSObject, ObservableObject {
         </dict>
         </plist>
         """
+        return xml.data(using: .utf8)!
     }
 }
 
