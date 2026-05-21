@@ -4,12 +4,12 @@ import Combine
 final class KernelLocationManager: ObservableObject {
     static let shared = KernelLocationManager()
 
-    @Published var isConnected: Bool   = false
-    @Published var status: String      = "Idle"
-    @Published var progress: Double    = 0.0
-    @Published var logs: [String]      = []
-    @Published var isRunning: Bool     = false
-    @Published var exploitReady: Bool  = false
+    @Published var isConnected: Bool     = false
+    @Published var status: String        = "Idle"
+    @Published var progress: Double      = 0.0
+    @Published var logs: [String]        = []
+    @Published var isRunning: Bool       = false
+    @Published var exploitReady: Bool    = false
     @Published var exploitError: String? = nil
     @Published var t1szBootDisplay: String = "Auto"
 
@@ -24,22 +24,6 @@ final class KernelLocationManager: ObservableObject {
 
     private init() {
         loadT1szDisplay()
-        installCrashGuard()
-    }
-
-    // MARK: - Crash guard
-
-    private func installCrashGuard() {
-        NSSetUncaughtExceptionHandler { exception in
-            let msg = "Unhandled exception: \(exception.name.rawValue) — \(exception.reason ?? "unknown")"
-            DispatchQueue.main.async {
-                KernelLocationManager.shared.isRunning     = false
-                KernelLocationManager.shared.exploitReady  = false
-                KernelLocationManager.shared.exploitError  = msg
-                KernelLocationManager.shared.status        = "Crash caught — see error"
-                KernelLocationManager.shared.appendLog("CRASH: \(msg)")
-            }
-        }
     }
 
     // MARK: - t1sz_boot
@@ -50,11 +34,9 @@ final class KernelLocationManager: ObservableObject {
             t1szBootDisplay = String(format: "0x%02X (manual)", stored)
         } else {
             let lara = UserDefaults.standard.object(forKey: kLaraT1sz) as? UInt64 ?? 0
-            if lara != 0 {
-                t1szBootDisplay = String(format: "0x%02X (auto-detected)", lara)
-            } else {
-                t1szBootDisplay = "Auto (not yet resolved)"
-            }
+            t1szBootDisplay = lara != 0
+                ? String(format: "0x%02X (auto-detected)", lara)
+                : "Auto (not yet resolved)"
         }
     }
 
@@ -80,14 +62,10 @@ final class KernelLocationManager: ObservableObject {
     // MARK: - Logs
 
     func appendLog(_ msg: String) {
-        DispatchQueue.main.async {
-            self.logs.append(msg)
-        }
+        DispatchQueue.main.async { self.logs.append(msg) }
     }
 
-    func clearLogs() {
-        logs = []
-    }
+    func clearLogs() { logs = [] }
 
     // MARK: - Foreground restore
 
@@ -98,9 +76,7 @@ final class KernelLocationManager: ObservableObject {
         guard lat != 0 || lon != 0 else { return }
 
         if ds_is_ready() {
-            DispatchQueue.global(qos: .userInitiated).async {
-                self.writeLocation(lat: lat, lon: lon)
-            }
+            DispatchQueue.global(qos: .userInitiated).async { self.writeLocation(lat: lat, lon: lon) }
         } else {
             runExploit { [weak self] success in
                 guard let self, success else { return }
@@ -115,18 +91,16 @@ final class KernelLocationManager: ObservableObject {
         guard !isRunning else { return }
 
         DispatchQueue.main.async {
-            self.isRunning      = true
-            self.exploitReady   = false
-            self.exploitError   = nil
-            self.progress       = 0.0
-            self.status         = "Starting exploit..."
+            self.isRunning       = true
+            self.exploitReady    = false
+            self.exploitError    = nil
+            self.progress        = 0.0
+            self.status          = "Starting exploit..."
             self.cancelRequested = false
         }
 
         let override = UserDefaults.standard.object(forKey: kT1szOverride) as? UInt64 ?? 0
-        if override != 0 {
-            UserDefaults.standard.set(override, forKey: kLaraT1sz)
-        }
+        if override != 0 { UserDefaults.standard.set(override, forKey: kLaraT1sz) }
 
         ds_set_log_callback { msg in
             guard let msg else { return }
@@ -134,76 +108,72 @@ final class KernelLocationManager: ObservableObject {
             KernelLocationManager.shared.appendLog(s)
             DispatchQueue.main.async { KernelLocationManager.shared.status = s }
         }
-
         ds_set_progress_callback { pct in
-            DispatchQueue.main.async {
-                KernelLocationManager.shared.progress = Double(pct)
-            }
+            DispatchQueue.main.async { KernelLocationManager.shared.progress = Double(pct) }
         }
 
         let item = DispatchWorkItem { [weak self] in
             guard let self else { return }
 
-            guard !self.cancelRequested else {
+            if self.cancelRequested {
                 DispatchQueue.main.async {
-                    self.isRunning = false
-                    self.status    = "Cancelled"
-                    self.progress  = 0.0
+                    self.isRunning = false; self.status = "Cancelled"; self.progress = 0
                 }
-                completion?(false)
-                return
+                completion?(false); return
             }
 
-            let ret = ds_run()
+            // ── ds_run() wrapped in signal-based crash guard ──────────────
+            let ret = ds_run_safe()
+
+            if ret < 0 {
+                // A signal was caught (SIGSEGV / SIGBUS / SIGILL etc.)
+                let sigName = String(cString: ds_run_safe_signal_name())
+                let err = "Exploit crashed — caught \(sigName)"
+                self.appendLog("CRASH: \(err)")
+                DispatchQueue.main.async {
+                    self.isRunning = false; self.exploitError = err
+                    self.status = err; self.progress = 0
+                }
+                completion?(false); return
+            }
 
             if self.cancelRequested {
                 DispatchQueue.main.async {
-                    self.isRunning = false
-                    self.status    = "Stopped"
-                    self.progress  = 0.0
+                    self.isRunning = false; self.status = "Stopped"; self.progress = 0
                 }
-                completion?(false)
-                return
+                completion?(false); return
             }
 
             guard ret == 0, ds_is_ready() else {
                 let err = "Exploit failed (code \(ret))"
-                DispatchQueue.main.async {
-                    self.isRunning     = false
-                    self.exploitError  = err
-                    self.status        = err
-                    self.progress      = 0.0
-                }
                 self.appendLog("ERROR: \(err)")
-                completion?(false)
-                return
+                DispatchQueue.main.async {
+                    self.isRunning = false; self.exploitError = err
+                    self.status = err; self.progress = 0
+                }
+                completion?(false); return
             }
 
-            DispatchQueue.main.async { self.status = "Kernel R/W ready — initialising VFS..." }
             self.appendLog("Kernel R/W ready — initialising VFS...")
+            DispatchQueue.main.async { self.status = "Kernel R/W ready — initialising VFS..." }
 
             let vfsRet = vfs_init()
             guard vfsRet == 0 || vfs_isready() else {
                 let err = "VFS init failed (\(vfsRet))"
-                DispatchQueue.main.async {
-                    self.isRunning    = false
-                    self.exploitError = err
-                    self.status       = err
-                    self.progress     = 0.0
-                }
                 self.appendLog("ERROR: \(err)")
-                completion?(false)
-                return
+                DispatchQueue.main.async {
+                    self.isRunning = false; self.exploitError = err
+                    self.status = err; self.progress = 0
+                }
+                completion?(false); return
             }
 
+            self.appendLog("Exploit complete — kernel ready")
             DispatchQueue.main.async {
-                self.isRunning      = false
-                self.exploitReady   = true
-                self.progress       = 1.0
-                self.status         = "Kernel ready"
+                self.isRunning = false; self.exploitReady = true
+                self.progress = 1.0; self.status = "Kernel ready"
                 self.loadT1szDisplay()
             }
-            self.appendLog("Exploit complete — kernel ready")
             completion?(true)
         }
 
@@ -215,9 +185,7 @@ final class KernelLocationManager: ObservableObject {
         cancelRequested = true
         workItem?.cancel()
         DispatchQueue.main.async {
-            self.isRunning = false
-            self.status    = "Stopped by user"
-            self.progress  = 0.0
+            self.isRunning = false; self.status = "Stopped by user"; self.progress = 0
         }
     }
 
@@ -227,11 +195,8 @@ final class KernelLocationManager: ObservableObject {
         UserDefaults.standard.set(lat,  forKey: kLastLat)
         UserDefaults.standard.set(lon,  forKey: kLastLon)
         UserDefaults.standard.set(true, forKey: kWasConnected)
-
         if exploitReady {
-            DispatchQueue.global(qos: .userInitiated).async {
-                self.writeLocation(lat: lat, lon: lon)
-            }
+            DispatchQueue.global(qos: .userInitiated).async { self.writeLocation(lat: lat, lon: lon) }
         } else {
             runExploit { [weak self] success in
                 guard let self, success else { return }
@@ -244,18 +209,14 @@ final class KernelLocationManager: ObservableObject {
         UserDefaults.standard.set(lat,  forKey: kLastLat)
         UserDefaults.standard.set(lon,  forKey: kLastLon)
         UserDefaults.standard.set(true, forKey: kWasConnected)
-        DispatchQueue.global(qos: .userInitiated).async {
-            self.writeLocation(lat: lat, lon: lon)
-        }
+        DispatchQueue.global(qos: .userInitiated).async { self.writeLocation(lat: lat, lon: lon) }
     }
 
     func updateLocation(lat: Double, lon: Double) {
         guard isConnected else { return }
         UserDefaults.standard.set(lat, forKey: kLastLat)
         UserDefaults.standard.set(lon, forKey: kLastLon)
-        DispatchQueue.global(qos: .userInitiated).async {
-            self.writeLocation(lat: lat, lon: lon)
-        }
+        DispatchQueue.global(qos: .userInitiated).async { self.writeLocation(lat: lat, lon: lon) }
     }
 
     func disconnect() {
@@ -267,12 +228,26 @@ final class KernelLocationManager: ObservableObject {
     // MARK: - Private
 
     private func writeLocation(lat: Double, lon: Double) {
+        // 1. Write the simulated-location plist via VFS
         var plist = locationPlist(lat: lat, lon: lon)
         let plistPath = "/private/var/mobile/Library/Preferences/com.apple.locationd.plist"
         plist.withUTF8 { ptr in
             _ = vfs_write(plistPath, ptr.baseAddress!, ptr.count, 0)
         }
+        appendLog("VFS: plist written")
+
+        // 2. Kernel heap-scan patch (existing reliable path)
         patchLocationdInKernel(lat: lat, lon: lon)
+
+        // 3. RemoteCall: notify locationd from inside its own process so it
+        //    flushes its preference cache and picks up the plist immediately.
+        DispatchQueue.global(qos: .background).async { [weak self] in
+            let rcRet = rc_locationd_reload_plist()
+            self?.appendLog(rcRet == 0
+                ? "RC: locationd plist reload triggered"
+                : "RC: notify skipped (code \(rcRet)) — heap patch still active")
+        }
+
         DispatchQueue.main.async {
             self.isConnected = true
             self.status = String(format: "Spoofing %.5f, %.5f", lat, lon)
@@ -298,9 +273,9 @@ final class KernelLocationManager: ObservableObject {
 
         for _ in 0..<2048 {
             guard entry != 0, entry != sentinel else { break }
-            let start = ds_kread64(entry + 0x10)
-            let end   = ds_kread64(entry + 0x18)
-            let size  = end &- start
+            let start     = ds_kread64(entry + 0x10)
+            let end       = ds_kread64(entry + 0x18)
+            let size      = end &- start
             let flagsWord = ds_kread64(entry + UInt64(off_vm_map_entry_vme_alias))
             let curProt   = UInt8((flagsWord >> 7) & 0x7)
             if curProt & 0x3 == 0x3, size >= 16, size <= 0x800_000 {
