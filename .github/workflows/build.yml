@@ -19,7 +19,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Set build time
-        run: echo "BUILD_TIME=$(date -u '+%B %d, %Y at %I:%M %p UTC')" >> $GITHUB_ENV
+        run: echo "BUILD_TIME=$(TZ='America/New_York' date '+%B %d, %Y at %I:%M %p %Z')" >> $GITHUB_ENV
 
       - name: Fetch ChOma headers
         run: |
