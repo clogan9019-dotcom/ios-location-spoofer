@@ -328,10 +328,15 @@ final class KernelLocationManager: NSObject, ObservableObject {
         timer.setEventHandler { [weak self] in
             guard let self, self.isConnected else { return }
             self.writeSpoofPlist(lat: self.spoofLat, lon: self.spoofLon, enabled: true)
-            // RC reload keeps the coords live without restarting locationd
+            // Try RC reload (task-port injection into locationd) first.
             let rcRet = rc_locationd_reload_plist()
             if rcRet != 0 {
-                filelog("(spoofTimer) RC reload returned \(rcRet)")
+                filelog("(spoofTimer) RC reload returned \(rcRet) — trying direct notify fallback")
+                // Direct cross-process notify: locationd may still honour some of these.
+                let directRet = notify_locationd_direct()
+                if directRet != 0 {
+                    filelog("(spoofTimer) direct notify also returned \(directRet)")
+                }
             }
         }
         timer.resume()
@@ -348,7 +353,7 @@ final class KernelLocationManager: NSObject, ObservableObject {
 
     /// Full activation: write simulation plist, then try RC to reload it
     /// instantly inside locationd.  If RC fails (e.g. first run), fall back
-    /// to SIGKILL so launchd restarts locationd with the new plist.
+    /// to restarting locationd so launchd respawns it with the new plist.
     private func activateSpoof(lat: Double, lon: Double) {
         flog(String(format: "activateSpoof: %.5f, %.5f", lat, lon))
 
@@ -368,7 +373,7 @@ final class KernelLocationManager: NSObject, ObservableObject {
                 Thread.sleep(forTimeInterval: 0.5)
             }
         } else {
-            // ── RC failed — fall back to SIGKILL + wait ───────────────────
+            // ── RC failed — fall back to restarting locationd ─────────────
             flog("activateSpoof: RC failed (\(rcRet)) — falling back to locationd restart")
             restartLocationd(reason: "activating spoof at \(String(format: "%.5f", lat)), \(String(format: "%.5f", lon))")
             flog("activateSpoof: waiting for locationd to restart...")
@@ -417,15 +422,19 @@ final class KernelLocationManager: NSObject, ObservableObject {
         }
     }
 
-    /// Kill locationd by PID via the kernel proc struct.
-    /// launchd will auto-restart it within ~2 seconds.
+    /// Restart locationd so launchd respawns it with the updated simulation plist.
+    /// Strategy:
+    ///   1. Try kernel-read PID + userspace kill() — fast, works if we have permission.
+    ///   2. If kill() fails (EPERM running as mobile), use launchctl kickstart -k
+    ///      which talks to launchd via XPC and can forcibly restart any system service.
     private func restartLocationd(reason: String) {
         flog("restartLocationd: \(reason)")
 
         // Look up locationd's kernel proc structure
         let locationdProc = procbyname("locationd")
         guard locationdProc != 0 else {
-            flog("restartLocationd: procbyname('locationd') returned 0 — cannot restart")
+            flog("restartLocationd: procbyname('locationd') returned 0 — trying launchctl")
+            launchctlKickstartLocationd()
             return
         }
 
@@ -434,7 +443,8 @@ final class KernelLocationManager: NSObject, ObservableObject {
         flog("restartLocationd: locationd pid = \(pid)")
 
         guard pid > 1 else {
-            flog("restartLocationd: invalid pid \(pid)")
+            flog("restartLocationd: invalid pid \(pid) — trying launchctl")
+            launchctlKickstartLocationd()
             return
         }
 
@@ -444,7 +454,20 @@ final class KernelLocationManager: NSObject, ObservableObject {
             flog("restartLocationd: kill(\(pid), SIGKILL) = ok — launchd will restart locationd")
         } else {
             let err = errno
-            flog("restartLocationd: kill(\(pid), SIGKILL) = \(ret) (errno \(err))")
+            flog("restartLocationd: kill(\(pid), SIGKILL) = \(ret) (errno \(err)) — falling back to launchctl")
+            launchctlKickstartLocationd()
+        }
+    }
+
+    /// Use `launchctl kickstart -k system/com.apple.locationd` to force-restart
+    /// locationd via launchd's XPC interface, bypassing EPERM from userspace kill().
+    private func launchctlKickstartLocationd() {
+        flog("restartLocationd: using launchctl kickstart -k system/com.apple.locationd")
+        let ret = restart_locationd_via_launchctl()
+        if ret == 0 {
+            flog("restartLocationd: launchctl kickstart succeeded")
+        } else {
+            flog("restartLocationd: launchctl kickstart returned \(ret)")
         }
     }
 }
