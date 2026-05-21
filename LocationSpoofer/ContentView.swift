@@ -614,7 +614,7 @@ struct MapView: UIViewRepresentable {
         let map = MKMapView()
         map.delegate = context.coordinator
         map.setRegion(region, animated: false)
-        map.showsUserLocation = false
+        map.showsUserLocation = true
         let tap = UITapGestureRecognizer(target: context.coordinator, action: #selector(Coordinator.handleTap(_:)))
         map.addGestureRecognizer(tap)
         if let pin = selectedPin {
