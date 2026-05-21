@@ -42,7 +42,7 @@ jobs:
             CODE_SIGNING_ALLOWED=NO \
             DEVELOPMENT_TEAM="" \
             LIBRARY_SEARCH_PATHS="$GITHUB_WORKSPACE/LocationSpoofer/lib" \
-            | xcpretty
+
 
       - name: Export unsigned IPA
         run: |
