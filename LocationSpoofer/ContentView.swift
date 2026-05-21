@@ -3,7 +3,7 @@ import MapKit
 import CoreLocation
 
 struct ContentView: View {
-    @EnvironmentObject var vpnManager: VPNManager
+    @EnvironmentObject var kernelManager: KernelLocationManager
     @StateObject private var locationSearch = LocationSearchViewModel()
 
     @State private var region = MKCoordinateRegion(
@@ -122,21 +122,21 @@ struct ContentView: View {
                         .font(.system(size: 11, weight: .semibold))
                         .foregroundColor(.secondary)
                         .textCase(.uppercase)
-                    Text(vpnManager.status)
+                    Text(kernelManager.status)
                         .font(.system(size: 14, weight: .medium))
-                        .foregroundColor(vpnManager.isConnected ? .green : .secondary)
+                        .foregroundColor(kernelManager.isConnected ? .green : .secondary)
+                        .lineLimit(2)
                 }
                 Spacer()
                 Toggle("", isOn: Binding(
-                    get: { vpnManager.isConnected },
+                    get: { kernelManager.isConnected },
                     set: { newVal in
                         if newVal {
                             if let pin = selectedPin {
-                                vpnManager.saveCoordinates(lat: pin.latitude, lon: pin.longitude)
+                                kernelManager.connect(lat: pin.latitude, lon: pin.longitude)
                             }
-                            vpnManager.connect()
                         } else {
-                            vpnManager.disconnect()
+                            kernelManager.disconnect()
                         }
                     }
                 ))
@@ -162,6 +162,9 @@ struct ContentView: View {
                 )
                 searchText = result.title
                 showSuggestions = false
+                if kernelManager.isConnected {
+                    kernelManager.updateLocation(lat: loc.coordinate.latitude, lon: loc.coordinate.longitude)
+                }
             }
         }
     }
