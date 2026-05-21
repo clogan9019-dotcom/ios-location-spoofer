@@ -3,6 +3,7 @@
 #ifndef LocationSpoofer_Bridging_Header_h
 #define LocationSpoofer_Bridging_Header_h
 
+#include "FileLogger.h"
 #include "CrashGuard.h"
 #include "kexploit/darksword.h"
 #include "kexploit/offsets.h"
