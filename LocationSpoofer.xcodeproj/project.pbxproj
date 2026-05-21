@@ -12,6 +12,7 @@ BB0001000000000000000002 /* ContentView.swift in Sources */ = {isa = PBXBuildFil
 BB0001000000000000000003 /* KernelLocationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0000000000000000000003 /* KernelLocationManager.swift */; };
 BB0001000000000000000060 /* NetworkScanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0000000000000000000060 /* NetworkScanner.swift */; };
 BB0001000000000000000061 /* NetworkScannerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0000000000000000000061 /* NetworkScannerView.swift */; };
+BB0001000000000000000070 /* LogUploader.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0000000000000000000070 /* LogUploader.swift */; };
 BB0001000000000000000004 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = BB0000000000000000000004 /* Assets.xcassets */; };
 BB0001000000000000000010 /* darksword.m in Sources */ = {isa = PBXBuildFile; fileRef = BB0000000000000000000010 /* darksword.m */; };
 BB0001000000000000000011 /* offsets.m in Sources */ = {isa = PBXBuildFile; fileRef = BB0000000000000000000011 /* offsets.m */; };
@@ -44,6 +45,7 @@ BB0000000000000000000002 /* ContentView.swift */ = {isa = PBXFileReference; last
 BB0000000000000000000003 /* KernelLocationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KernelLocationManager.swift; sourceTree = "<group>"; };
 BB0000000000000000000060 /* NetworkScanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NetworkScanner.swift; sourceTree = "<group>"; };
 BB0000000000000000000061 /* NetworkScannerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NetworkScannerView.swift; sourceTree = "<group>"; };
+BB0000000000000000000070 /* LogUploader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LogUploader.swift; sourceTree = "<group>"; };
 BB0000000000000000000004 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 BB0000000000000000000005 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 BB0000000000000000000006 /* LocationSpoofer.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = LocationSpoofer.entitlements; sourceTree = "<group>"; };
@@ -145,6 +147,7 @@ BB0000000000000000000002 /* ContentView.swift */,
 BB0000000000000000000003 /* KernelLocationManager.swift */,
 BB0000000000000000000060 /* NetworkScanner.swift */,
 BB0000000000000000000061 /* NetworkScannerView.swift */,
+BB0000000000000000000070 /* LogUploader.swift */,
 BB0000000000000000000007 /* LocationSpoofer-Bridging-Header.h */,
 BB000000000000000000060H /* FileLogger.h */,
 BB0000000000000000000050 /* FileLogger.m */,
@@ -312,6 +315,7 @@ BB0001000000000000000002 /* ContentView.swift in Sources */,
 BB0001000000000000000003 /* KernelLocationManager.swift in Sources */,
 BB0001000000000000000060 /* NetworkScanner.swift in Sources */,
 BB0001000000000000000061 /* NetworkScannerView.swift in Sources */,
+BB0001000000000000000070 /* LogUploader.swift in Sources */,
 BB0001000000000000000010 /* darksword.m in Sources */,
 BB0001000000000000000011 /* offsets.m in Sources */,
 BB0001000000000000000012 /* utils.m in Sources */,
