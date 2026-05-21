@@ -111,33 +111,6 @@ final class KernelLocationManager: NSObject, ObservableObject {
         flog("Log cleared by user")
     }
 
-    // MARK: - Foreground restore
-
-    func restoreIfNeeded() {
-        flog("restoreIfNeeded: checking...")
-        guard UserDefaults.standard.bool(forKey: kWasConnected) else {
-            flog("restoreIfNeeded: was not connected, skipping")
-            return
-        }
-        let lat = UserDefaults.standard.double(forKey: kLastLat)
-        let lon = UserDefaults.standard.double(forKey: kLastLon)
-        guard lat != 0 || lon != 0 else {
-            flog("restoreIfNeeded: no saved coords, skipping")
-            return
-        }
-        flog(String(format: "restoreIfNeeded: restoring %.5f, %.5f", lat, lon))
-        if ds_is_ready() {
-            flog("restoreIfNeeded: kernel still ready, re-writing location")
-            DispatchQueue.global(qos: .userInitiated).async { self.writeLocation(lat: lat, lon: lon) }
-        } else {
-            flog("restoreIfNeeded: kernel not ready, re-running exploit")
-            runExploit { [weak self] success in
-                guard let self, success else { return }
-                self.applySpoof(lat: lat, lon: lon)
-            }
-        }
-    }
-
     // MARK: - Exploit runner
 
     func runExploit(completion: ((Bool) -> Void)? = nil) {
@@ -303,22 +276,25 @@ final class KernelLocationManager: NSObject, ObservableObject {
     private func writeLocation(lat: Double, lon: Double) {
         flog(String(format: "writeLocation: %.5f, %.5f", lat, lon))
 
-        var plist = locationPlist(lat: lat, lon: lon)
         let plistPath = "/private/var/mobile/Library/Preferences/com.apple.locationd.plist"
-        var vfsResult: Int64 = -1
-        plist.withUTF8 { ptr in
-            vfsResult = vfs_write(plistPath, ptr.baseAddress!, ptr.count, 0)
-        }
-        flog("writeLocation: vfs_write plist -> \(vfsResult)")
+        let plistContent = locationPlist(lat: lat, lon: lon)
 
-        patchLocationdInKernel(lat: lat, lon: lon)
+        do {
+            let dir = (plistPath as NSString).deletingLastPathComponent
+            try FileManager.default.createDirectory(atPath: dir,
+                withIntermediateDirectories: true, attributes: nil)
+            try plistContent.write(toFile: plistPath, atomically: true, encoding: .utf8)
+            flog("writeLocation: plist written successfully")
+        } catch {
+            flog("writeLocation: plist write failed — \(error.localizedDescription)")
+        }
 
         DispatchQueue.global(qos: .background).async { [weak self] in
             let rcRet = rc_locationd_reload_plist()
             if rcRet != 0 {
                 notify_locationd_direct()
             }
-            self?.flog("writeLocation: rc_locationd_reload -> \(rcRet == 0 ? "ok (RemoteCall)" : "skipped (code \(rcRet)), tried direct notify")")
+            self?.flog("writeLocation: locationd reload -> \(rcRet == 0 ? "ok (RemoteCall)" : "fallback notify (code \(rcRet))")")
         }
 
         DispatchQueue.main.async {
@@ -326,53 +302,6 @@ final class KernelLocationManager: NSObject, ObservableObject {
             self.status = String(format: "Spoofing %.5f, %.5f", lat, lon)
         }
         filelog_flush()
-    }
-
-    private func patchLocationdInKernel(lat: Double, lon: Double) {
-        guard ds_is_ready() else { flog("patchLocationdInKernel: ds not ready, skipping"); return }
-        let procPtr = proc_find_by_name("locationd")
-        guard procPtr != 0 else { flog("patchLocationdInKernel: locationd proc not found"); return }
-        flog(String(format: "patchLocationdInKernel: found locationd proc @ 0x%llX", procPtr))
-        scanAndPatch(procPtr: procPtr, lat: lat, lon: lon)
-    }
-
-    private func scanAndPatch(procPtr: UInt64, lat: Double, lon: Double) {
-        let task  = proc_task(procPtr)
-        guard task != 0 else { flog("scanAndPatch: proc_task == 0"); return }
-        let vmMap = task_get_vm_map(task)
-        guard vmMap != 0 else { flog("scanAndPatch: vm_map == 0"); return }
-
-        let hdr      = vmMap + UInt64(off_vm_map_hdr)
-        var entry    = ds_kread64(hdr + UInt64(off_vm_map_header_links_next))
-        let sentinel = hdr
-        var patched  = 0
-
-        for _ in 0..<2048 {
-            guard entry != 0, entry != sentinel else { break }
-            let start     = ds_kread64(entry + 0x10)
-            let end       = ds_kread64(entry + 0x18)
-            let size      = end &- start
-            let flagsWord = ds_kread64(entry + 0x48)
-            let curProt   = UInt8((flagsWord >> 7) & 0xF)
-            if curProt & 0x3 == 0x3, size >= 16, size <= 0x800_000 {
-                var addr = start
-                while addr &+ 16 <= end {
-                    let rLat = Double(bitPattern: ds_kread64(addr))
-                    let rLon = Double(bitPattern: ds_kread64(addr &+ 8))
-                    if rLat.isFinite && rLon.isFinite
-                        && rLat >= -90  && rLat <= 90
-                        && rLon >= -180 && rLon <= 180
-                        && abs(rLat) > 0.01 && abs(rLon) > 0.01 {
-                        ds_kwrite64(addr,      lat.bitPattern)
-                        ds_kwrite64(addr &+ 8, lon.bitPattern)
-                        patched += 1
-                    }
-                    addr &+= 8
-                }
-            }
-            entry = ds_kread64(entry + UInt64(off_vm_map_entry_links_next))
-        }
-        flog("scanAndPatch: patched \(patched) coordinate pair(s)")
     }
 
     private func locationPlist(lat: Double, lon: Double) -> String {
@@ -407,6 +336,6 @@ extension KernelLocationManager: CLLocationManagerDelegate {
 
     func locationManager(_ manager: CLLocationManager,
                          didFailWithError error: Error) {
-        // ignore — GPS unavailability doesn't affect kernel-level spoofing
+        // ignore — GPS unavailability does not affect kernel-level spoofing
     }
 }
