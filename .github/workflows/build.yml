@@ -61,31 +61,32 @@ jobs:
           echo "IPA created successfully"
           ls -lh "$RUNNER_TEMP/LocationSpoofer.ipa"
 
-      - name: Upload IPA artifact
-        uses: actions/upload-artifact@v4
+      - name: Publish IPA — Latest Build (main branch)
+        if: github.ref == 'refs/heads/main'
+        uses: softprops/action-gh-release@v2
         with:
-          name: LocationSpoofer-unsigned
-          path: ${{ runner.temp }}/LocationSpoofer.ipa
-          retention-days: 30
+          tag_name: latest
+          name: Latest Build
+          prerelease: true
+          make_latest: false
+          files: ${{ runner.temp }}/LocationSpoofer.ipa
+          body: |
+            Rolling build from the latest commit on `main`.
 
-      - name: Upload Archive artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: LocationSpoofer-archive
-          path: ${{ runner.temp }}/LocationSpoofer.xcarchive
-          retention-days: 7
+            Unsigned IPA — sideload with Sideloadly, AltStore, or TrollStore.
 
-      - name: Create GitHub Release
+      - name: Publish IPA — Versioned Release (tag push)
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
           name: LocationSpoofer ${{ github.ref_name }}
+          files: ${{ runner.temp }}/LocationSpoofer.ipa
           body: |
             ## LocationSpoofer ${{ github.ref_name }}
 
             Unsigned IPA — sideload with Sideloadly, AltStore, or TrollStore.
 
             No jailbreak required. Works on stock iOS.
-          files: ${{ runner.temp }}/LocationSpoofer.ipa
           draft: false
           prerelease: false
+
