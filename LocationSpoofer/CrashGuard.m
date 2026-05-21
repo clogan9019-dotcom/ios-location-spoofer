@@ -5,6 +5,8 @@
 #include <setjmp.h>
 #include <string.h>
 #include <unistd.h>
+#include <stdio.h>
+#include <stdlib.h>
 
 static sigjmp_buf            _cg_jmp;
 static volatile sig_atomic_t _cg_active = 0;
