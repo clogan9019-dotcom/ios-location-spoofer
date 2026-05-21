@@ -26,6 +26,9 @@ BB0001000000000000000032 /* exc.m in Sources */ = {isa = PBXBuildFile; fileRef =
 BB0001000000000000000033 /* pac.m in Sources */ = {isa = PBXBuildFile; fileRef = BB0000000000000000000033 /* pac.m */; };
 BB0001000000000000000034 /* thread.m in Sources */ = {isa = PBXBuildFile; fileRef = BB0000000000000000000034 /* thread.m */; };
 BB0001000000000000000035 /* findcachedataoff.m in Sources */ = {isa = PBXBuildFile; fileRef = BB0000000000000000000035 /* findcachedataoff.m */; };
+BB0001000000000000000026 /* locationd.m in Sources */ = {isa = PBXBuildFile; fileRef = BB0000000000000000000026 /* locationd.m */; };
+BB0001000000000000000050 /* FileLogger.m in Sources */ = {isa = PBXBuildFile; fileRef = BB0000000000000000000050 /* FileLogger.m */; };
+BB0001000000000000000051 /* CrashGuard.m in Sources */ = {isa = PBXBuildFile; fileRef = BB0000000000000000000051 /* CrashGuard.m */; };
 BB0001000000000000000040 /* libgrabkernel2.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = BB0000000000000000000040 /* libgrabkernel2.dylib */; };
 BB0001000000000000000041 /* libxpf.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = BB0000000000000000000041 /* libxpf.dylib */; };
 BB0002000000000000000040 /* libgrabkernel2.dylib in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = BB0000000000000000000040 /* libgrabkernel2.dylib */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
@@ -78,6 +81,12 @@ BB0000000000000000000041 /* libxpf.dylib */ = {isa = PBXFileReference; lastKnown
 BB000000000000000000050H /* libgrabkernel2.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = libgrabkernel2.h; sourceTree = "<group>"; };
 BB000000000000000000051H /* xpf.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = xpf.h; sourceTree = "<group>"; };
 BB000000000000000000052H /* fileport.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = fileport.h; sourceTree = "<group>"; };
+BB000000000000000000026H /* locationd.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = locationd.h; sourceTree = "<group>"; };
+BB0000000000000000000026 /* locationd.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = locationd.m; sourceTree = "<group>"; };
+BB000000000000000000060H /* FileLogger.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = FileLogger.h; sourceTree = "<group>"; };
+BB0000000000000000000050 /* FileLogger.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = FileLogger.m; sourceTree = "<group>"; };
+BB000000000000000000061H /* CrashGuard.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = CrashGuard.h; sourceTree = "<group>"; };
+BB0000000000000000000051 /* CrashGuard.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = CrashGuard.m; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -85,6 +94,9 @@ BB00F0000000000000000001 /* Frameworks */ = {
 isa = PBXFrameworksBuildPhase;
 buildActionMask = 2147483647;
 files = (
+BB0001000000000000000026 /* locationd.m in Sources */ = {isa = PBXBuildFile; fileRef = BB0000000000000000000026 /* locationd.m */; };
+BB0001000000000000000050 /* FileLogger.m in Sources */ = {isa = PBXBuildFile; fileRef = BB0000000000000000000050 /* FileLogger.m */; };
+BB0001000000000000000051 /* CrashGuard.m in Sources */ = {isa = PBXBuildFile; fileRef = BB0000000000000000000051 /* CrashGuard.m */; };
 BB0001000000000000000040 /* libgrabkernel2.dylib in Frameworks */,
 BB0001000000000000000041 /* libxpf.dylib in Frameworks */,
 );
@@ -131,6 +143,10 @@ BB0000000000000000000001 /* LocationSpooferApp.swift */,
 BB0000000000000000000002 /* ContentView.swift */,
 BB0000000000000000000003 /* KernelLocationManager.swift */,
 BB0000000000000000000007 /* LocationSpoofer-Bridging-Header.h */,
+BB000000000000000000060H /* FileLogger.h */,
+BB0000000000000000000050 /* FileLogger.m */,
+BB000000000000000000061H /* CrashGuard.h */,
+BB0000000000000000000051 /* CrashGuard.m */,
 BB0000000000000000000004 /* Assets.xcassets */,
 BB0000000000000000000005 /* Info.plist */,
 BB0000000000000000000006 /* LocationSpoofer.entitlements */,
@@ -173,6 +189,8 @@ BB0000000000000000000023 /* apfs.m */,
 BB000000000000000000024H /* rc.h */,
 BB0000000000000000000024 /* rc.m */,
 BB000000000000000000025H /* xpaci.h */,
+BB000000000000000000026H /* locationd.h */,
+BB0000000000000000000026 /* locationd.m */,
 );
 path = pe;
 sourceTree = "<group>";
@@ -304,6 +322,9 @@ BB0001000000000000000032 /* exc.m in Sources */,
 BB0001000000000000000033 /* pac.m in Sources */,
 BB0001000000000000000034 /* thread.m in Sources */,
 BB0001000000000000000035 /* findcachedataoff.m in Sources */,
+BB0001000000000000000026 /* locationd.m in Sources */,
+BB0001000000000000000050 /* FileLogger.m in Sources */,
+BB0001000000000000000051 /* CrashGuard.m in Sources */,
 );
 runOnlyForDeploymentPostprocessing = 0;
 };
@@ -400,6 +421,7 @@ SWIFT_OBJC_BRIDGING_HEADER = "LocationSpoofer/LocationSpoofer-Bridging-Header.h"
 SWIFT_VERSION = 5.0;
 TARGETED_DEVICE_FAMILY = 1;
 USER_HEADER_SEARCH_PATHS = (
+"$(SRCROOT)/LocationSpoofer",
 "$(SRCROOT)/LocationSpoofer/kexploit",
 "$(SRCROOT)/LocationSpoofer/kexploit/pe",
 "$(SRCROOT)/LocationSpoofer/kexploit/TaskRop",
@@ -448,6 +470,7 @@ SWIFT_OBJC_BRIDGING_HEADER = "LocationSpoofer/LocationSpoofer-Bridging-Header.h"
 SWIFT_VERSION = 5.0;
 TARGETED_DEVICE_FAMILY = 1;
 USER_HEADER_SEARCH_PATHS = (
+"$(SRCROOT)/LocationSpoofer",
 "$(SRCROOT)/LocationSpoofer/kexploit",
 "$(SRCROOT)/LocationSpoofer/kexploit/pe",
 "$(SRCROOT)/LocationSpoofer/kexploit/TaskRop",
