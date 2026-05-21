@@ -2,12 +2,12 @@ import SwiftUI
 
 @main
 struct LocationSpooferApp: App {
-    @StateObject private var vpnManager = VPNManager.shared
+    @StateObject private var kernelManager = KernelLocationManager.shared
 
     var body: some Scene {
         WindowGroup {
             ContentView()
-                .environmentObject(vpnManager)
+                .environmentObject(kernelManager)
         }
     }
 }
