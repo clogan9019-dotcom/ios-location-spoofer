@@ -65,7 +65,7 @@ final class KernelLocationManager: ObservableObject {
 
     private func writeLocation(lat: Double, lon: Double) {
         // 1. VFS path — write simulated location plist that locationd respects
-        let plist = locationPlist(lat: lat, lon: lon)
+        var plist = locationPlist(lat: lat, lon: lon)
         let plistPath = "/private/var/mobile/Library/Preferences/com.apple.locationd.plist"
         plist.withUTF8 { ptr in
             _ = vfs_write(plistPath, ptr.baseAddress!, ptr.count, 0)
