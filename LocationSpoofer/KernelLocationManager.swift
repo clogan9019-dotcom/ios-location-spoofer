@@ -4,8 +4,13 @@ import Combine
 final class KernelLocationManager: ObservableObject {
     static let shared = KernelLocationManager()
 
-    @Published var isConnected: Bool = false
-    @Published var status: String = "Disconnected"
+    @Published var isConnected: Bool   = false
+    @Published var status: String      = "Idle"
+    @Published var progress: Double    = 0.0
+    @Published var logs: [String]      = []
+    @Published var isRunning: Bool     = false
+    @Published var exploitReady: Bool  = false
+    @Published var exploitError: String? = nil
     @Published var t1szBootDisplay: String = "Auto"
 
     private let kLastLat      = "spoofer_last_lat"
@@ -14,11 +19,30 @@ final class KernelLocationManager: ObservableObject {
     private let kT1szOverride = "spoofer_t1sz_override"
     private let kLaraT1sz     = "lara.t1sz_boot"
 
+    private var cancelRequested = false
+    private var workItem: DispatchWorkItem?
+
     private init() {
         loadT1szDisplay()
+        installCrashGuard()
     }
 
-    // MARK: - t1sz_boot override
+    // MARK: - Crash guard
+
+    private func installCrashGuard() {
+        NSSetUncaughtExceptionHandler { exception in
+            let msg = "Unhandled exception: \(exception.name.rawValue) — \(exception.reason ?? "unknown")"
+            DispatchQueue.main.async {
+                KernelLocationManager.shared.isRunning     = false
+                KernelLocationManager.shared.exploitReady  = false
+                KernelLocationManager.shared.exploitError  = msg
+                KernelLocationManager.shared.status        = "Crash caught — see error"
+                KernelLocationManager.shared.appendLog("CRASH: \(msg)")
+            }
+        }
+    }
+
+    // MARK: - t1sz_boot
 
     private func loadT1szDisplay() {
         let stored = UserDefaults.standard.object(forKey: kT1szOverride) as? UInt64 ?? 0
@@ -34,8 +58,6 @@ final class KernelLocationManager: ObservableObject {
         }
     }
 
-    /// Set a manual t1sz_boot override. Pass a hex string like "0x11" or "0x19".
-    /// Returns false if the string is not a valid hex number.
     @discardableResult
     func setT1szBootOverride(_ hexString: String) -> Bool {
         let cleaned = hexString.trimmingCharacters(in: .whitespaces)
@@ -55,6 +77,18 @@ final class KernelLocationManager: ObservableObject {
         t1szBootDisplay = "Auto (not yet resolved)"
     }
 
+    // MARK: - Logs
+
+    func appendLog(_ msg: String) {
+        DispatchQueue.main.async {
+            self.logs.append(msg)
+        }
+    }
+
+    func clearLogs() {
+        logs = []
+    }
+
     // MARK: - Foreground restore
 
     func restoreIfNeeded() {
@@ -68,23 +102,27 @@ final class KernelLocationManager: ObservableObject {
                 self.writeLocation(lat: lat, lon: lon)
             }
         } else {
-            connect(lat: lat, lon: lon)
+            runExploit { [weak self] success in
+                guard let self, success else { return }
+                self.applySpoof(lat: lat, lon: lon)
+            }
         }
     }
 
-    // MARK: - Connect / Disconnect
+    // MARK: - Exploit runner
 
-    func connect(lat: Double, lon: Double) {
+    func runExploit(completion: ((Bool) -> Void)? = nil) {
+        guard !isRunning else { return }
+
         DispatchQueue.main.async {
-            self.status = "Starting exploit..."
-            self.isConnected = false
+            self.isRunning      = true
+            self.exploitReady   = false
+            self.exploitError   = nil
+            self.progress       = 0.0
+            self.status         = "Starting exploit..."
+            self.cancelRequested = false
         }
 
-        UserDefaults.standard.set(lat,  forKey: kLastLat)
-        UserDefaults.standard.set(lon,  forKey: kLastLon)
-        UserDefaults.standard.set(true, forKey: kWasConnected)
-
-        // Apply any manual t1sz_boot override before the exploit initialises offsets
         let override = UserDefaults.standard.object(forKey: kT1szOverride) as? UInt64 ?? 0
         if override != 0 {
             UserDefaults.standard.set(override, forKey: kLaraT1sz)
@@ -93,32 +131,120 @@ final class KernelLocationManager: ObservableObject {
         ds_set_log_callback { msg in
             guard let msg else { return }
             let s = String(cString: msg)
+            KernelLocationManager.shared.appendLog(s)
             DispatchQueue.main.async { KernelLocationManager.shared.status = s }
         }
 
-        ds_set_progress_callback { _ in }
+        ds_set_progress_callback { pct in
+            DispatchQueue.main.async {
+                KernelLocationManager.shared.progress = Double(pct)
+            }
+        }
 
-        DispatchQueue.global(qos: .userInitiated).async {
-            let ret = ds_run()
-            guard ret == 0, ds_is_ready() else {
+        let item = DispatchWorkItem { [weak self] in
+            guard let self else { return }
+
+            guard !self.cancelRequested else {
                 DispatchQueue.main.async {
-                    self.status = "Exploit failed (code \(ret))"
+                    self.isRunning = false
+                    self.status    = "Cancelled"
+                    self.progress  = 0.0
                 }
+                completion?(false)
+                return
+            }
+
+            let ret = ds_run()
+
+            if self.cancelRequested {
+                DispatchQueue.main.async {
+                    self.isRunning = false
+                    self.status    = "Stopped"
+                    self.progress  = 0.0
+                }
+                completion?(false)
+                return
+            }
+
+            guard ret == 0, ds_is_ready() else {
+                let err = "Exploit failed (code \(ret))"
+                DispatchQueue.main.async {
+                    self.isRunning     = false
+                    self.exploitError  = err
+                    self.status        = err
+                    self.progress      = 0.0
+                }
+                self.appendLog("ERROR: \(err)")
+                completion?(false)
+                return
+            }
+
+            DispatchQueue.main.async { self.status = "Kernel R/W ready — initialising VFS..." }
+            self.appendLog("Kernel R/W ready — initialising VFS...")
+
+            let vfsRet = vfs_init()
+            guard vfsRet == 0 || vfs_isready() else {
+                let err = "VFS init failed (\(vfsRet))"
+                DispatchQueue.main.async {
+                    self.isRunning    = false
+                    self.exploitError = err
+                    self.status       = err
+                    self.progress     = 0.0
+                }
+                self.appendLog("ERROR: \(err)")
+                completion?(false)
                 return
             }
 
             DispatchQueue.main.async {
-                self.status = "Kernel R/W ready — initialising VFS..."
+                self.isRunning      = false
+                self.exploitReady   = true
+                self.progress       = 1.0
+                self.status         = "Kernel ready"
                 self.loadT1szDisplay()
             }
+            self.appendLog("Exploit complete — kernel ready")
+            completion?(true)
+        }
 
-            let vfsRet = vfs_init()
-            guard vfsRet == 0 || vfs_isready() else {
-                DispatchQueue.main.async { self.status = "VFS init failed (\(vfsRet))" }
-                return
+        workItem = item
+        DispatchQueue.global(qos: .userInitiated).async(execute: item)
+    }
+
+    func cancelExploit() {
+        cancelRequested = true
+        workItem?.cancel()
+        DispatchQueue.main.async {
+            self.isRunning = false
+            self.status    = "Stopped by user"
+            self.progress  = 0.0
+        }
+    }
+
+    // MARK: - Location spoofing
+
+    func connect(lat: Double, lon: Double) {
+        UserDefaults.standard.set(lat,  forKey: kLastLat)
+        UserDefaults.standard.set(lon,  forKey: kLastLon)
+        UserDefaults.standard.set(true, forKey: kWasConnected)
+
+        if exploitReady {
+            DispatchQueue.global(qos: .userInitiated).async {
+                self.writeLocation(lat: lat, lon: lon)
             }
+        } else {
+            runExploit { [weak self] success in
+                guard let self, success else { return }
+                self.applySpoof(lat: lat, lon: lon)
+            }
+        }
+    }
 
-            DispatchQueue.main.async { self.status = "Injecting location..." }
+    func applySpoof(lat: Double, lon: Double) {
+        UserDefaults.standard.set(lat,  forKey: kLastLat)
+        UserDefaults.standard.set(lon,  forKey: kLastLon)
+        UserDefaults.standard.set(true, forKey: kWasConnected)
+        DispatchQueue.global(qos: .userInitiated).async {
             self.writeLocation(lat: lat, lon: lon)
         }
     }
@@ -172,14 +298,11 @@ final class KernelLocationManager: ObservableObject {
 
         for _ in 0..<2048 {
             guard entry != 0, entry != sentinel else { break }
-
             let start = ds_kread64(entry + 0x10)
             let end   = ds_kread64(entry + 0x18)
             let size  = end &- start
-
             let flagsWord = ds_kread64(entry + UInt64(off_vm_map_entry_vme_alias))
             let curProt   = UInt8((flagsWord >> 7) & 0x7)
-
             if curProt & 0x3 == 0x3, size >= 16, size <= 0x800_000 {
                 var addr = start
                 while addr &+ 16 <= end {
