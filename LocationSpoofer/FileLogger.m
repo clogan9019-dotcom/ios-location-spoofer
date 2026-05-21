@@ -1,5 +1,6 @@
 #import "FileLogger.h"
 #import <Foundation/Foundation.h>
+#import <UIKit/UIKit.h>
 #include <pthread.h>
 #include <sys/stat.h>
 #include <fcntl.h>
