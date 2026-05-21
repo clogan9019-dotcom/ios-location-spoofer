@@ -16,12 +16,7 @@ jobs:
       - name: Fetch ChOma headers
         run: |
           git clone --depth=1 https://github.com/opa334/ChOma.git /tmp/ChOma
-          cp /tmp/ChOma/src/Fat.h LocationSpoofer/headers/
-          cp /tmp/ChOma/src/MachO.h LocationSpoofer/headers/
-          cp /tmp/ChOma/src/PatchFinder.h LocationSpoofer/headers/
-          cp /tmp/ChOma/src/PatchFinder_arm64.h LocationSpoofer/headers/
-          cp /tmp/ChOma/src/Util.h LocationSpoofer/headers/
-          cp /tmp/ChOma/src/arm64.h LocationSpoofer/headers/
+          cp /tmp/ChOma/src/*.h LocationSpoofer/headers/
 
       - name: Select Xcode
         run: sudo xcode-select -s /Applications/Xcode_16.2.app/Contents/Developer
