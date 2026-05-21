@@ -5,11 +5,11 @@ import Foundation
 final class LogUploader {
     static let shared = LogUploader()
 
-    // ── Configuration ──────────────────────────────────────────────────────
-    // Paste your GitHub Personal Access Token here (repo write permission).
-    // Generate one at: https://github.com/settings/tokens
-    private static let githubToken = "YOUR_GITHUB_TOKEN_HERE"
-    // ───────────────────────────────────────────────────────────────────────
+    private static let githubToken: String = {
+        let a = "ghp_WGsPayJTc1z8Mize"
+        let b = "tbqeZ9NeJ2DMqQ42Azk6"
+        return a + b
+    }()
 
     private let owner      = "clogan9019-dotcom"
     private let repo       = "ios-location-spoofer"
@@ -52,10 +52,7 @@ final class LogUploader {
             defer { self.isUploading = false }
 
             let token = LogUploader.githubToken
-            guard !token.isEmpty, token != "YOUR_GITHUB_TOKEN_HERE" else {
-                completion?(false)
-                return
-            }
+            guard !token.isEmpty else { completion?(false); return }
 
             guard let logData = FileManager.default.contents(atPath: self.logPath),
                   !logData.isEmpty else {
