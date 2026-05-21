@@ -94,9 +94,6 @@ BB00F0000000000000000001 /* Frameworks */ = {
 isa = PBXFrameworksBuildPhase;
 buildActionMask = 2147483647;
 files = (
-BB0001000000000000000026 /* locationd.m in Sources */ = {isa = PBXBuildFile; fileRef = BB0000000000000000000026 /* locationd.m */; };
-BB0001000000000000000050 /* FileLogger.m in Sources */ = {isa = PBXBuildFile; fileRef = BB0000000000000000000050 /* FileLogger.m */; };
-BB0001000000000000000051 /* CrashGuard.m in Sources */ = {isa = PBXBuildFile; fileRef = BB0000000000000000000051 /* CrashGuard.m */; };
 BB0001000000000000000040 /* libgrabkernel2.dylib in Frameworks */,
 BB0001000000000000000041 /* libxpf.dylib in Frameworks */,
 );
