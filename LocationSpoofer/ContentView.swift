@@ -520,6 +520,8 @@ struct SettingsView: View {
     @State private var customHex: String = ""
     @State private var showError = false
     @State private var errorMessage = ""
+    @State private var isUploading = false
+    @State private var uploadResult: String? = nil
 
     private let presets: [(label: String, chip: String, hex: String)] = [
         ("A12 / A13",        "iPhone XS – 11",        "0x19"),
@@ -598,6 +600,48 @@ struct SettingsView: View {
                     }
                 } footer: {
                     Text("Auto-detect resolves the value from the kernelcache at exploit time.")
+                        .font(.caption)
+                }
+
+                Section {
+                    Button {
+                        guard !isUploading else { return }
+                        isUploading = true
+                        uploadResult = nil
+                        LogUploader.shared.uploadLog { success in
+                            DispatchQueue.main.async {
+                                isUploading = false
+                                uploadResult = success ? "Logs sent successfully." : "Upload failed — check your token and network."
+                            }
+                        }
+                    } label: {
+                        HStack {
+                            if isUploading {
+                                ProgressView()
+                                    .padding(.trailing, 6)
+                                Text("Sending…")
+                                    .foregroundColor(.secondary)
+                            } else {
+                                Label("Send Logs to GitHub", systemImage: "arrow.up.doc.fill")
+                                    .foregroundColor(.accentColor)
+                            }
+                        }
+                    }
+                    .disabled(isUploading)
+
+                    if let result = uploadResult {
+                        HStack(spacing: 6) {
+                            Image(systemName: result.contains("success") ? "checkmark.circle.fill" : "xmark.circle.fill")
+                                .foregroundColor(result.contains("success") ? .green : .red)
+                            Text(result)
+                                .font(.caption)
+                                .foregroundColor(result.contains("success") ? .green : .red)
+                        }
+                    }
+                } header: {
+                    Text("Diagnostics")
+                } footer: {
+                    Text("Uploads the current log file to device-logs/logs.txt in your GitHub repo.")
                         .font(.caption)
                 }
             }
