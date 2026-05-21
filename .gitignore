@@ -1,0 +1,15 @@
+# User secrets — never commit
+LocationSpoofer/Secrets.swift
+
+# Xcode
+*.xcuserstate
+xcuserdata/
+*.xcworkspace/xcuserdata/
+DerivedData/
+build/
+*.ipa
+*.dSYM.zip
+*.dSYM
+
+# macOS
+.DS_Store
