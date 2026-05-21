@@ -1,10 +1,15 @@
 import Foundation
 
 /// Automatically uploads the on-device log file to the GitHub repo.
-/// Reads /private/var/mobile/Documents/LocationSpooferLogs/logs.txt
-/// and commits it to device-logs/logs.txt in the repo via the GitHub API.
+/// Reads the log from the device and commits it to device-logs/logs.txt.
 final class LogUploader {
     static let shared = LogUploader()
+
+    // ── Configuration ──────────────────────────────────────────────────────
+    // Paste your GitHub Personal Access Token here (repo write permission).
+    // Generate one at: https://github.com/settings/tokens
+    private static let githubToken = "YOUR_GITHUB_TOKEN_HERE"
+    // ───────────────────────────────────────────────────────────────────────
 
     private let owner      = "clogan9019-dotcom"
     private let repo       = "ios-location-spoofer"
@@ -19,7 +24,6 @@ final class LogUploader {
 
     // MARK: - Auto-upload timer
 
-    /// Start uploading the log every `intervalSeconds`. Call once after the exploit is ready.
     func startAutoUpload(intervalSeconds: Double = 60.0) {
         stopAutoUpload()
         let timer = DispatchSource.makeTimerSource(queue: uploadQueue)
@@ -40,7 +44,6 @@ final class LogUploader {
 
     // MARK: - Upload
 
-    /// Read the log file and push it as a commit to the repo. Fire-and-forget.
     func uploadLog(completion: ((Bool) -> Void)? = nil) {
         uploadQueue.async { [weak self] in
             guard let self else { return }
@@ -48,37 +51,30 @@ final class LogUploader {
             self.isUploading = true
             defer { self.isUploading = false }
 
+            let token = LogUploader.githubToken
+            guard !token.isEmpty, token != "YOUR_GITHUB_TOKEN_HERE" else {
+                completion?(false)
+                return
+            }
+
             guard let logData = FileManager.default.contents(atPath: self.logPath),
                   !logData.isEmpty else {
                 completion?(false)
                 return
             }
 
-            let token = GitHubSecrets.token
-            guard !token.isEmpty, token != "YOUR_GITHUB_TOKEN_HERE" else {
-                // Token not configured — silently skip.
-                completion?(false)
-                return
-            }
-
             let base64Content = logData.base64EncodedString()
             let timestamp = ISO8601DateFormatter().string(from: Date())
-            let commitMessage = "device log \(timestamp)"
-
-            // Fetch existing file SHA so we can update in-place.
             let existingSHA = self.fetchSHA(token: token)
 
             var body: [String: Any] = [
-                "message": commitMessage,
+                "message": "device log \(timestamp)",
                 "content": base64Content
             ]
-            if let sha = existingSHA {
-                body["sha"] = sha
-            }
+            if let sha = existingSHA { body["sha"] = sha }
 
             guard let bodyData = try? JSONSerialization.data(withJSONObject: body) else {
-                completion?(false)
-                return
+                completion?(false); return
             }
 
             let urlString = "https://api.github.com/repos/\(self.owner)/\(self.repo)/contents/\(self.remotePath)"
@@ -97,7 +93,7 @@ final class LogUploader {
 
             URLSession.shared.dataTask(with: request) { _, response, _ in
                 if let http = response as? HTTPURLResponse {
-                    success = (http.statusCode == 200 || http.statusCode == 201)
+                    success = http.statusCode == 200 || http.statusCode == 201
                 }
                 sem.signal()
             }.resume()
