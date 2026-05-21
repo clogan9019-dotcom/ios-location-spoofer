@@ -608,10 +608,10 @@ struct SettingsView: View {
                         guard !isUploading else { return }
                         isUploading = true
                         uploadResult = nil
-                        LogUploader.shared.uploadLog { success in
+                        LogUploader.shared.uploadLog { result in
                             DispatchQueue.main.async {
                                 isUploading = false
-                                uploadResult = success ? "Logs sent successfully." : "Upload failed — check your token and network."
+                                uploadResult = result
                             }
                         }
                     } label: {
