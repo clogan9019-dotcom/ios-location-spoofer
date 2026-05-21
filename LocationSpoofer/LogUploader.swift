@@ -67,12 +67,30 @@ final class LogUploader {
             let base64Content = logData.base64EncodedString()
             let timestamp     = ISO8601DateFormatter().string(from: Date())
 
-            // Attempt the PUT, retrying once on 409 with a fresh SHA.
             let result = self.putFile(base64Content: base64Content,
                                       message: "device log \(timestamp)",
                                       token: token,
                                       retryOn409: true)
+
+            // On success, wipe both log files so the next session starts clean.
+            if result == "Sent successfully." {
+                self.clearLogs()
+            }
+
             completion?(result)
+        }
+    }
+
+    // MARK: - Clear logs
+
+    private func clearLogs() {
+        let fm = FileManager.default
+        for path in [mirrorLogPath, primaryLogPath] {
+            // Truncate to empty rather than delete, so the file descriptor in
+            // FileLogger stays valid and new log lines keep appending correctly.
+            if fm.fileExists(atPath: path) {
+                try? "".write(toFile: path, atomically: false, encoding: .utf8)
+            }
         }
     }
 
@@ -100,7 +118,7 @@ final class LogUploader {
         request.setValue("Bearer \(token)",             forHTTPHeaderField: "Authorization")
         request.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
         request.setValue("application/json",            forHTTPHeaderField: "Content-Type")
-        request.httpBody       = bodyData
+        request.httpBody        = bodyData
         request.timeoutInterval = 30
 
         let sem    = DispatchSemaphore(value: 0)
@@ -129,7 +147,7 @@ final class LogUploader {
 
         sem.wait()
 
-        // 409 = SHA conflict (stale). Re-fetch and retry once.
+        // 409 = stale SHA. Re-fetch and retry once.
         if statusCode == 409 && retryOn409 {
             return putFile(base64Content: base64Content,
                            message: message,
