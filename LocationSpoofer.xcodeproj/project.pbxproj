@@ -7,171 +7,234 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		AA0040000000000000000000 /* LocationSpooferApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0020000000000000000000 /* LocationSpooferApp.swift */; };
-		AA0041000000000000000000 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0021000000000000000000 /* ContentView.swift */; };
-		AA0042000000000000000000 /* VPNManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0022000000000000000000 /* VPNManager.swift */; };
-		AA0043000000000000000000 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = AA0023000000000000000000 /* Assets.xcassets */; };
-		AA0050000000000000000000 /* PacketTunnelProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0030000000000000000000 /* PacketTunnelProvider.swift */; };
-		AA0051000000000000000000 /* LocationProxyServer.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0031000000000000000000 /* LocationProxyServer.swift */; };
-		AA0060000000000000000000 /* PacketTunnel.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = AA0011000000000000000000 /* PacketTunnel.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		BB0001000000000000000001 /* LocationSpooferApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0000000000000000000001 /* LocationSpooferApp.swift */; };
+		BB0001000000000000000002 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0000000000000000000002 /* ContentView.swift */; };
+		BB0001000000000000000003 /* KernelLocationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0000000000000000000003 /* KernelLocationManager.swift */; };
+		BB0001000000000000000004 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = BB0000000000000000000004 /* Assets.xcassets */; };
+		BB0001000000000000000010 /* darksword.m in Sources */ = {isa = PBXBuildFile; fileRef = BB0000000000000000000010 /* darksword.m */; };
+		BB0001000000000000000011 /* offsets.m in Sources */ = {isa = PBXBuildFile; fileRef = BB0000000000000000000011 /* offsets.m */; };
+		BB0001000000000000000012 /* utils.m in Sources */ = {isa = PBXBuildFile; fileRef = BB0000000000000000000012 /* utils.m */; };
+		BB0001000000000000000013 /* persistence.m in Sources */ = {isa = PBXBuildFile; fileRef = BB0000000000000000000013 /* persistence.m */; };
+		BB0001000000000000000020 /* vfs.m in Sources */ = {isa = PBXBuildFile; fileRef = BB0000000000000000000020 /* vfs.m */; };
+		BB0001000000000000000021 /* sbx.m in Sources */ = {isa = PBXBuildFile; fileRef = BB0000000000000000000021 /* sbx.m */; };
+		BB0001000000000000000022 /* vnode.m in Sources */ = {isa = PBXBuildFile; fileRef = BB0000000000000000000022 /* vnode.m */; };
+		BB0001000000000000000023 /* apfs.m in Sources */ = {isa = PBXBuildFile; fileRef = BB0000000000000000000023 /* apfs.m */; };
+		BB0001000000000000000024 /* rc.m in Sources */ = {isa = PBXBuildFile; fileRef = BB0000000000000000000024 /* rc.m */; };
+		BB0001000000000000000030 /* RemoteCall.m in Sources */ = {isa = PBXBuildFile; fileRef = BB0000000000000000000030 /* RemoteCall.m */; };
+		BB0001000000000000000031 /* vm.m in Sources */ = {isa = PBXBuildFile; fileRef = BB0000000000000000000031 /* vm.m */; };
+		BB0001000000000000000032 /* exc.m in Sources */ = {isa = PBXBuildFile; fileRef = BB0000000000000000000032 /* exc.m */; };
+		BB0001000000000000000033 /* pac.m in Sources */ = {isa = PBXBuildFile; fileRef = BB0000000000000000000033 /* pac.m */; };
+		BB0001000000000000000034 /* thread.m in Sources */ = {isa = PBXBuildFile; fileRef = BB0000000000000000000034 /* thread.m */; };
+		BB0001000000000000000035 /* findcachedataoff.m in Sources */ = {isa = PBXBuildFile; fileRef = BB0000000000000000000035 /* findcachedataoff.m */; };
+		BB0001000000000000000040 /* libgrabkernel2.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = BB0000000000000000000040 /* libgrabkernel2.dylib */; };
+		BB0001000000000000000041 /* libxpf.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = BB0000000000000000000041 /* libxpf.dylib */; };
 /* End PBXBuildFile section */
 
-/* Begin PBXContainerItemProxy section */
-		AA00B0000000000000000000 /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = AA0001000000000000000000 /* Project object */;
-			proxyType = 1;
-			remoteGlobalIDString = AA00A1000000000000000000;
-			remoteInfo = PacketTunnel;
-		};
-/* End PBXContainerItemProxy section */
-
-/* Begin PBXCopyFilesBuildPhase section */
-		AA0083000000000000000000 /* Embed Foundation Extensions */ = {
-			isa = PBXCopyFilesBuildPhase;
-			buildActionMask = 2147483647;
-			dstPath = "";
-			dstSubfolderSpec = 13;
-			files = (
-				AA0060000000000000000000 /* PacketTunnel.appex in Embed Foundation Extensions */,
-			);
-			name = "Embed Foundation Extensions";
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-/* End PBXCopyFilesBuildPhase section */
-
 /* Begin PBXFileReference section */
-		AA0010000000000000000000 /* LocationSpoofer.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = LocationSpoofer.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		AA0011000000000000000000 /* PacketTunnel.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = PacketTunnel.appex; sourceTree = BUILT_PRODUCTS_DIR; };
-		AA0020000000000000000000 /* LocationSpooferApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocationSpooferApp.swift; sourceTree = "<group>"; };
-		AA0021000000000000000000 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
-		AA0022000000000000000000 /* VPNManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VPNManager.swift; sourceTree = "<group>"; };
-		AA0023000000000000000000 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
-		AA0024000000000000000000 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
-		AA0025000000000000000000 /* LocationSpoofer.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = LocationSpoofer.entitlements; sourceTree = "<group>"; };
-		AA0030000000000000000000 /* PacketTunnelProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PacketTunnelProvider.swift; sourceTree = "<group>"; };
-		AA0031000000000000000000 /* LocationProxyServer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocationProxyServer.swift; sourceTree = "<group>"; };
-		AA0032000000000000000000 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
-		AA0033000000000000000000 /* PacketTunnel.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = PacketTunnel.entitlements; sourceTree = "<group>"; };
+		BB0000000000000000000000 /* LocationSpoofer.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = LocationSpoofer.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		BB0000000000000000000001 /* LocationSpooferApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocationSpooferApp.swift; sourceTree = "<group>"; };
+		BB0000000000000000000002 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		BB0000000000000000000003 /* KernelLocationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KernelLocationManager.swift; sourceTree = "<group>"; };
+		BB0000000000000000000004 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		BB0000000000000000000005 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		BB0000000000000000000006 /* LocationSpoofer.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = LocationSpoofer.entitlements; sourceTree = "<group>"; };
+		BB0000000000000000000007 /* LocationSpoofer-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "LocationSpoofer-Bridging-Header.h"; sourceTree = "<group>"; };
+		BB0000000000000000000010 /* darksword.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = darksword.m; sourceTree = "<group>"; };
+		BB000000000000000000010H /* darksword.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = darksword.h; sourceTree = "<group>"; };
+		BB0000000000000000000011 /* offsets.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = offsets.m; sourceTree = "<group>"; };
+		BB000000000000000000011H /* offsets.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = offsets.h; sourceTree = "<group>"; };
+		BB0000000000000000000012 /* utils.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = utils.m; sourceTree = "<group>"; };
+		BB000000000000000000012H /* utils.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = utils.h; sourceTree = "<group>"; };
+		BB0000000000000000000013 /* persistence.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = persistence.m; sourceTree = "<group>"; };
+		BB000000000000000000013H /* persistence.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = persistence.h; sourceTree = "<group>"; };
+		BB000000000000000000014H /* compat.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = compat.h; sourceTree = "<group>"; };
+		BB0000000000000000000020 /* vfs.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = vfs.m; sourceTree = "<group>"; };
+		BB000000000000000000020H /* vfs.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = vfs.h; sourceTree = "<group>"; };
+		BB0000000000000000000021 /* sbx.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = sbx.m; sourceTree = "<group>"; };
+		BB000000000000000000021H /* sbx.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = sbx.h; sourceTree = "<group>"; };
+		BB0000000000000000000022 /* vnode.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = vnode.m; sourceTree = "<group>"; };
+		BB000000000000000000022H /* vnode.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = vnode.h; sourceTree = "<group>"; };
+		BB0000000000000000000023 /* apfs.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = apfs.m; sourceTree = "<group>"; };
+		BB000000000000000000023H /* apfs.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = apfs.h; sourceTree = "<group>"; };
+		BB0000000000000000000024 /* rc.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = rc.m; sourceTree = "<group>"; };
+		BB000000000000000000024H /* rc.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = rc.h; sourceTree = "<group>"; };
+		BB000000000000000000025H /* xpaci.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = xpaci.h; sourceTree = "<group>"; };
+		BB0000000000000000000030 /* RemoteCall.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RemoteCall.m; sourceTree = "<group>"; };
+		BB000000000000000000030H /* RemoteCall.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RemoteCall.h; sourceTree = "<group>"; };
+		BB0000000000000000000031 /* vm.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = vm.m; sourceTree = "<group>"; };
+		BB000000000000000000031H /* vm.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = vm.h; sourceTree = "<group>"; };
+		BB0000000000000000000032 /* exc.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = exc.m; sourceTree = "<group>"; };
+		BB000000000000000000032H /* exc.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = exc.h; sourceTree = "<group>"; };
+		BB0000000000000000000033 /* pac.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = pac.m; sourceTree = "<group>"; };
+		BB000000000000000000033H /* pac.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = pac.h; sourceTree = "<group>"; };
+		BB0000000000000000000034 /* thread.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = thread.m; sourceTree = "<group>"; };
+		BB000000000000000000034H /* thread.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = thread.h; sourceTree = "<group>"; };
+		BB0000000000000000000035 /* findcachedataoff.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = findcachedataoff.m; sourceTree = "<group>"; };
+		BB000000000000000000035H /* privateapi.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = privateapi.h; sourceTree = "<group>"; };
+		BB0000000000000000000040 /* libgrabkernel2.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libgrabkernel2.dylib; path = lib/libgrabkernel2.dylib; sourceTree = "<group>"; };
+		BB0000000000000000000041 /* libxpf.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libxpf.dylib; path = lib/libxpf.dylib; sourceTree = "<group>"; };
+		BB000000000000000000050H /* libgrabkernel2.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = libgrabkernel2.h; sourceTree = "<group>"; };
+		BB000000000000000000051H /* xpf.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = xpf.h; sourceTree = "<group>"; };
+		BB000000000000000000052H /* fileport.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = fileport.h; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
-		AA0081000000000000000000 /* Frameworks */ = {
+		BB00F0000000000000000001 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-		AA0091000000000000000000 /* Frameworks */ = {
-			isa = PBXFrameworksBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
+				BB0001000000000000000040 /* libgrabkernel2.dylib in Frameworks */,
+				BB0001000000000000000041 /* libxpf.dylib in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
-		AA0002000000000000000000 /* MainGroup */ = {
+		BB00G0000000000000000000 /* MainGroup */ = {
 			isa = PBXGroup;
 			children = (
-				AA0004000000000000000000 /* LocationSpoofer */,
-				AA0005000000000000000000 /* PacketTunnel */,
-				AA0003000000000000000000 /* Products */,
+				BB00G0000000000000000001 /* LocationSpoofer */,
+				BB00G0000000000000000002 /* Products */,
 			);
 			sourceTree = "<group>";
 		};
-		AA0003000000000000000000 /* Products */ = {
+		BB00G0000000000000000002 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				AA0010000000000000000000 /* LocationSpoofer.app */,
-				AA0011000000000000000000 /* PacketTunnel.appex */,
+				BB0000000000000000000000 /* LocationSpoofer.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
 		};
-		AA0004000000000000000000 /* LocationSpoofer */ = {
+		BB00G0000000000000000001 /* LocationSpoofer */ = {
 			isa = PBXGroup;
 			children = (
-				AA0020000000000000000000 /* LocationSpooferApp.swift */,
-				AA0021000000000000000000 /* ContentView.swift */,
-				AA0022000000000000000000 /* VPNManager.swift */,
-				AA0023000000000000000000 /* Assets.xcassets */,
-				AA0024000000000000000000 /* Info.plist */,
-				AA0025000000000000000000 /* LocationSpoofer.entitlements */,
+				BB0000000000000000000001 /* LocationSpooferApp.swift */,
+				BB0000000000000000000002 /* ContentView.swift */,
+				BB0000000000000000000003 /* KernelLocationManager.swift */,
+				BB0000000000000000000007 /* LocationSpoofer-Bridging-Header.h */,
+				BB0000000000000000000004 /* Assets.xcassets */,
+				BB0000000000000000000005 /* Info.plist */,
+				BB0000000000000000000006 /* LocationSpoofer.entitlements */,
+				BB00G0000000000000000010 /* kexploit */,
+				BB00G0000000000000000040 /* headers */,
+				BB00G0000000000000000050 /* lib */,
 			);
 			path = LocationSpoofer;
 			sourceTree = "<group>";
 		};
-		AA0005000000000000000000 /* PacketTunnel */ = {
+		BB00G0000000000000000010 /* kexploit */ = {
 			isa = PBXGroup;
 			children = (
-				AA0030000000000000000000 /* PacketTunnelProvider.swift */,
-				AA0031000000000000000000 /* LocationProxyServer.swift */,
-				AA0032000000000000000000 /* Info.plist */,
-				AA0033000000000000000000 /* PacketTunnel.entitlements */,
+				BB000000000000000000010H /* darksword.h */,
+				BB0000000000000000000010 /* darksword.m */,
+				BB000000000000000000011H /* offsets.h */,
+				BB0000000000000000000011 /* offsets.m */,
+				BB000000000000000000012H /* utils.h */,
+				BB0000000000000000000012 /* utils.m */,
+				BB000000000000000000013H /* persistence.h */,
+				BB0000000000000000000013 /* persistence.m */,
+				BB000000000000000000014H /* compat.h */,
+				BB00G0000000000000000020 /* pe */,
+				BB00G0000000000000000030 /* TaskRop */,
 			);
-			path = PacketTunnel;
+			path = kexploit;
+			sourceTree = "<group>";
+		};
+		BB00G0000000000000000020 /* pe */ = {
+			isa = PBXGroup;
+			children = (
+				BB000000000000000000020H /* vfs.h */,
+				BB0000000000000000000020 /* vfs.m */,
+				BB000000000000000000021H /* sbx.h */,
+				BB0000000000000000000021 /* sbx.m */,
+				BB000000000000000000022H /* vnode.h */,
+				BB0000000000000000000022 /* vnode.m */,
+				BB000000000000000000023H /* apfs.h */,
+				BB0000000000000000000023 /* apfs.m */,
+				BB000000000000000000024H /* rc.h */,
+				BB0000000000000000000024 /* rc.m */,
+				BB000000000000000000025H /* xpaci.h */,
+			);
+			path = pe;
+			sourceTree = "<group>";
+		};
+		BB00G0000000000000000030 /* TaskRop */ = {
+			isa = PBXGroup;
+			children = (
+				BB000000000000000000030H /* RemoteCall.h */,
+				BB0000000000000000000030 /* RemoteCall.m */,
+				BB000000000000000000031H /* vm.h */,
+				BB0000000000000000000031 /* vm.m */,
+				BB000000000000000000032H /* exc.h */,
+				BB0000000000000000000032 /* exc.m */,
+				BB000000000000000000033H /* pac.h */,
+				BB0000000000000000000033 /* pac.m */,
+				BB000000000000000000034H /* thread.h */,
+				BB0000000000000000000034 /* thread.m */,
+				BB0000000000000000000035 /* findcachedataoff.m */,
+				BB000000000000000000035H /* privateapi.h */,
+			);
+			path = TaskRop;
+			sourceTree = "<group>";
+		};
+		BB00G0000000000000000040 /* headers */ = {
+			isa = PBXGroup;
+			children = (
+				BB000000000000000000050H /* libgrabkernel2.h */,
+				BB000000000000000000051H /* xpf.h */,
+				BB000000000000000000052H /* fileport.h */,
+			);
+			path = headers;
+			sourceTree = "<group>";
+		};
+		BB00G0000000000000000050 /* lib */ = {
+			isa = PBXGroup;
+			children = (
+				BB0000000000000000000040 /* libgrabkernel2.dylib */,
+				BB0000000000000000000041 /* libxpf.dylib */,
+			);
+			name = lib;
+			path = lib;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		AA00A0000000000000000000 /* LocationSpoofer */ = {
+		BB00T0000000000000000001 /* LocationSpoofer */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = AA00C1000000000000000000 /* Build configuration list for PBXNativeTarget "LocationSpoofer" */;
+			buildConfigurationList = BB00C0000000000000000001 /* Build configuration list for PBXNativeTarget "LocationSpoofer" */;
 			buildPhases = (
-				AA0080000000000000000000 /* Sources */,
-				AA0081000000000000000000 /* Frameworks */,
-				AA0082000000000000000000 /* Resources */,
-				AA0083000000000000000000 /* Embed Foundation Extensions */,
+				BB00P0000000000000000001 /* Sources */,
+				BB00F0000000000000000001 /* Frameworks */,
+				BB00R0000000000000000001 /* Resources */,
 			);
 			buildRules = (
 			);
 			dependencies = (
-				AA00B1000000000000000000 /* PBXTargetDependency */,
 			);
 			name = LocationSpoofer;
 			productName = LocationSpoofer;
-			productReference = AA0010000000000000000000 /* LocationSpoofer.app */;
+			productReference = BB0000000000000000000000 /* LocationSpoofer.app */;
 			productType = "com.apple.product-type.application";
-		};
-		AA00A1000000000000000000 /* PacketTunnel */ = {
-			isa = PBXNativeTarget;
-			buildConfigurationList = AA00C2000000000000000000 /* Build configuration list for PBXNativeTarget "PacketTunnel" */;
-			buildPhases = (
-				AA0090000000000000000000 /* Sources */,
-				AA0091000000000000000000 /* Frameworks */,
-			);
-			buildRules = (
-			);
-			dependencies = (
-			);
-			name = PacketTunnel;
-			productName = PacketTunnel;
-			productReference = AA0011000000000000000000 /* PacketTunnel.appex */;
-			productType = "com.apple.product-type.app-extension";
 		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
-		AA0001000000000000000000 /* Project object */ = {
+		BB00PROJ00000000000000001 /* Project object */ = {
 			isa = PBXProject;
 			attributes = {
 				BuildIndependentTargetsInParallel = 1;
 				LastSwiftUpdateCheck = 1500;
 				LastUpgradeCheck = 1500;
 				TargetAttributes = {
-					AA00A0000000000000000000 = {
-						CreatedOnToolsVersion = 15.0;
-					};
-					AA00A1000000000000000000 = {
+					BB00T0000000000000000001 = {
 						CreatedOnToolsVersion = 15.0;
 					};
 				};
 			};
-			buildConfigurationList = AA00C0000000000000000000 /* Build configuration list for PBXProject "LocationSpoofer" */;
+			buildConfigurationList = BB00C0000000000000000000 /* Build configuration list for PBXProject "LocationSpoofer" */;
 			compatibilityVersion = "Xcode 14.0";
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
@@ -179,97 +242,68 @@
 				en,
 				Base,
 			);
-			mainGroup = AA0002000000000000000000;
-			productRefGroup = AA0003000000000000000000 /* Products */;
+			mainGroup = BB00G0000000000000000000;
+			productRefGroup = BB00G0000000000000000002 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				AA00A0000000000000000000 /* LocationSpoofer */,
-				AA00A1000000000000000000 /* PacketTunnel */,
+				BB00T0000000000000000001 /* LocationSpoofer */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
-		AA0082000000000000000000 /* Resources */ = {
+		BB00R0000000000000000001 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				AA0043000000000000000000 /* Assets.xcassets in Resources */,
+				BB0001000000000000000004 /* Assets.xcassets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
-		AA0080000000000000000000 /* Sources */ = {
+		BB00P0000000000000000001 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				AA0040000000000000000000 /* LocationSpooferApp.swift in Sources */,
-				AA0041000000000000000000 /* ContentView.swift in Sources */,
-				AA0042000000000000000000 /* VPNManager.swift in Sources */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-		AA0090000000000000000000 /* Sources */ = {
-			isa = PBXSourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-				AA0050000000000000000000 /* PacketTunnelProvider.swift in Sources */,
-				AA0051000000000000000000 /* LocationProxyServer.swift in Sources */,
+				BB0001000000000000000001 /* LocationSpooferApp.swift in Sources */,
+				BB0001000000000000000002 /* ContentView.swift in Sources */,
+				BB0001000000000000000003 /* KernelLocationManager.swift in Sources */,
+				BB0001000000000000000010 /* darksword.m in Sources */,
+				BB0001000000000000000011 /* offsets.m in Sources */,
+				BB0001000000000000000012 /* utils.m in Sources */,
+				BB0001000000000000000013 /* persistence.m in Sources */,
+				BB0001000000000000000020 /* vfs.m in Sources */,
+				BB0001000000000000000021 /* sbx.m in Sources */,
+				BB0001000000000000000022 /* vnode.m in Sources */,
+				BB0001000000000000000023 /* apfs.m in Sources */,
+				BB0001000000000000000024 /* rc.m in Sources */,
+				BB0001000000000000000030 /* RemoteCall.m in Sources */,
+				BB0001000000000000000031 /* vm.m in Sources */,
+				BB0001000000000000000032 /* exc.m in Sources */,
+				BB0001000000000000000033 /* pac.m in Sources */,
+				BB0001000000000000000034 /* thread.m in Sources */,
+				BB0001000000000000000035 /* findcachedataoff.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
 
-/* Begin PBXTargetDependency section */
-		AA00B1000000000000000000 /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			target = AA00A1000000000000000000 /* PacketTunnel */;
-			targetProxy = AA00B0000000000000000000 /* PBXContainerItemProxy */;
-		};
-/* End PBXTargetDependency section */
-
 /* Begin XCBuildConfiguration section */
-		AA00D0000000000000000000 /* Debug */ = {
+		BB00BC00000000000000Debug /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
-				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
 				CLANG_ANALYZER_NONNULL = YES;
-				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
 				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
 				CLANG_ENABLE_MODULES = YES;
 				CLANG_ENABLE_OBJC_ARC = YES;
 				CLANG_ENABLE_OBJC_WEAK = YES;
-				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
-				CLANG_WARN_BOOL_CONVERSION = YES;
-				CLANG_WARN_COMMA = YES;
-				CLANG_WARN_CONSTANT_CONVERSION = YES;
-				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
-				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
-				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
-				CLANG_WARN_EMPTY_BODY = YES;
-				CLANG_WARN_ENUM_CONVERSION = YES;
-				CLANG_WARN_INFINITE_RECURSION = YES;
-				CLANG_WARN_INT_CONVERSION = YES;
-				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
-				CLANG_WARN_OBJC_IMPLICIT_RETAIN_CYCLE = YES;
-				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
-				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
-				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
-				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
-				CLANG_WARN_STRICT_PROTOTYPES = YES;
-				CLANG_WARN_SUSPICIOUS_MOVE = YES;
-				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
-				CLANG_WARN_UNREACHABLE_CODE = YES;
-				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = dwarf;
-				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
-				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu17;
 				GCC_DYNAMIC_NO_PIC = NO;
 				GCC_NO_COMMON_BLOCKS = YES;
@@ -278,16 +312,8 @@
 					"DEBUG=1",
 					"$(inherited)",
 				);
-				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
-				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
-				GCC_WARN_UNDECLARED_SELECTOR = YES;
-				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
-				GCC_WARN_UNUSED_FUNCTION = YES;
-				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
-				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
-				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
 				SDKROOT = iphoneos;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
@@ -295,185 +321,140 @@
 			};
 			name = Debug;
 		};
-		AA00D1000000000000000000 /* Release */ = {
+		BB00BC00000000000000Release /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
-				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
 				CLANG_ANALYZER_NONNULL = YES;
-				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
 				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
 				CLANG_ENABLE_MODULES = YES;
 				CLANG_ENABLE_OBJC_ARC = YES;
 				CLANG_ENABLE_OBJC_WEAK = YES;
-				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
-				CLANG_WARN_BOOL_CONVERSION = YES;
-				CLANG_WARN_COMMA = YES;
-				CLANG_WARN_CONSTANT_CONVERSION = YES;
-				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
-				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
-				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
-				CLANG_WARN_EMPTY_BODY = YES;
-				CLANG_WARN_ENUM_CONVERSION = YES;
-				CLANG_WARN_INFINITE_RECURSION = YES;
-				CLANG_WARN_INT_CONVERSION = YES;
-				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
-				CLANG_WARN_OBJC_IMPLICIT_RETAIN_CYCLE = YES;
-				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
-				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
-				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
-				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
-				CLANG_WARN_STRICT_PROTOTYPES = YES;
-				CLANG_WARN_SUSPICIOUS_MOVE = YES;
-				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
-				CLANG_WARN_UNREACHABLE_CODE = YES;
-				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				ENABLE_NS_ASSERTIONS = NO;
-				ENABLE_STRICT_OBJC_MSGSEND = YES;
-				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu17;
 				GCC_NO_COMMON_BLOCKS = YES;
-				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
-				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
-				GCC_WARN_UNDECLARED_SELECTOR = YES;
-				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
-				GCC_WARN_UNUSED_FUNCTION = YES;
-				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
-				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
-				MTL_FAST_MATH = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				SDKROOT = iphoneos;
 				SWIFT_COMPILATION_MODE = wholemodule;
-				VALIDATE_PRODUCT = YES;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
 			};
 			name = Release;
 		};
-		AA00D2000000000000000000 /* Debug */ = {
+		BB00BT00000000000000Debug /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = LocationSpoofer/LocationSpoofer.entitlements;
-				CODE_SIGN_STYLE = Automatic;
+				CODE_SIGN_STYLE = Manual;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = "";
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = LocationSpoofer/Info.plist;
-				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
+				OTHER_LDFLAGS = (
+					"$(inherited)",
+					"-lc++",
+					"-framework",
+					CoreLocation,
+					"-framework",
+					MapKit,
+					"-framework",
+					UIKit,
+					"-framework",
+					Foundation,
+					"-framework",
+					IOSurface,
+					"-framework",
+					CoreFoundation,
+					"-lbsm",
+				);
 				PRODUCT_BUNDLE_IDENTIFIER = com.personal.locationspoofer;
 				PRODUCT_NAME = "$(TARGET_NAME)";
-				SWIFT_EMIT_LOC_STRINGS = YES;
+				SDKROOT = iphoneos;
+				SWIFT_OBJC_BRIDGING_HEADER = "LocationSpoofer/LocationSpoofer-Bridging-Header.h";
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = 1;
+				USER_HEADER_SEARCH_PATHS = (
+					"$(SRCROOT)/LocationSpoofer/kexploit",
+					"$(SRCROOT)/LocationSpoofer/kexploit/pe",
+					"$(SRCROOT)/LocationSpoofer/kexploit/TaskRop",
+					"$(SRCROOT)/LocationSpoofer/headers",
+				);
 			};
 			name = Debug;
 		};
-		AA00D3000000000000000000 /* Release */ = {
+		BB00BT00000000000000Release /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = LocationSpoofer/LocationSpoofer.entitlements;
-				CODE_SIGN_STYLE = Automatic;
+				CODE_SIGN_STYLE = Manual;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = "";
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = LocationSpoofer/Info.plist;
-				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
+				OTHER_LDFLAGS = (
+					"$(inherited)",
+					"-lc++",
+					"-framework",
+					CoreLocation,
+					"-framework",
+					MapKit,
+					"-framework",
+					UIKit,
+					"-framework",
+					Foundation,
+					"-framework",
+					IOSurface,
+					"-framework",
+					CoreFoundation,
+					"-lbsm",
+				);
 				PRODUCT_BUNDLE_IDENTIFIER = com.personal.locationspoofer;
 				PRODUCT_NAME = "$(TARGET_NAME)";
-				SWIFT_EMIT_LOC_STRINGS = YES;
+				SDKROOT = iphoneos;
+				SWIFT_OBJC_BRIDGING_HEADER = "LocationSpoofer/LocationSpoofer-Bridging-Header.h";
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = 1;
-			};
-			name = Release;
-		};
-		AA00D4000000000000000000 /* Debug */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				CODE_SIGN_ENTITLEMENTS = PacketTunnel/PacketTunnel.entitlements;
-				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = "";
-				GENERATE_INFOPLIST_FILE = NO;
-				INFOPLIST_FILE = PacketTunnel/Info.plist;
-				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
-				LD_RUNPATH_SEARCH_PATHS = (
-					"$(inherited)",
-					"@executable_path/Frameworks",
-					"@executable_path/../../Frameworks",
+				USER_HEADER_SEARCH_PATHS = (
+					"$(SRCROOT)/LocationSpoofer/kexploit",
+					"$(SRCROOT)/LocationSpoofer/kexploit/pe",
+					"$(SRCROOT)/LocationSpoofer/kexploit/TaskRop",
+					"$(SRCROOT)/LocationSpoofer/headers",
 				);
-				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.personal.locationspoofer.packettunnel;
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SKIP_INSTALL = YES;
-				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = 1;
-			};
-			name = Debug;
-		};
-		AA00D5000000000000000000 /* Release */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				CODE_SIGN_ENTITLEMENTS = PacketTunnel/PacketTunnel.entitlements;
-				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = "";
-				GENERATE_INFOPLIST_FILE = NO;
-				INFOPLIST_FILE = PacketTunnel/Info.plist;
-				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
-				LD_RUNPATH_SEARCH_PATHS = (
-					"$(inherited)",
-					"@executable_path/Frameworks",
-					"@executable_path/../../Frameworks",
-				);
-				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.personal.locationspoofer.packettunnel;
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SKIP_INSTALL = YES;
-				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = 1;
 			};
 			name = Release;
 		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		AA00C0000000000000000000 /* Build configuration list for PBXProject "LocationSpoofer" */ = {
+		BB00C0000000000000000000 /* Build configuration list for PBXProject "LocationSpoofer" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				AA00D0000000000000000000 /* Debug */,
-				AA00D1000000000000000000 /* Release */,
+				BB00BC00000000000000Debug /* Debug */,
+				BB00BC00000000000000Release /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		AA00C1000000000000000000 /* Build configuration list for PBXNativeTarget "LocationSpoofer" */ = {
+		BB00C0000000000000000001 /* Build configuration list for PBXNativeTarget "LocationSpoofer" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				AA00D2000000000000000000 /* Debug */,
-				AA00D3000000000000000000 /* Release */,
-			);
-			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
-		};
-		AA00C2000000000000000000 /* Build configuration list for PBXNativeTarget "PacketTunnel" */ = {
-			isa = XCConfigurationList;
-			buildConfigurations = (
-				AA00D4000000000000000000 /* Debug */,
-				AA00D5000000000000000000 /* Release */,
+				BB00BT00000000000000Debug /* Debug */,
+				BB00BT00000000000000Release /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
@@ -481,5 +462,5 @@
 /* End XCConfigurationList section */
 
 	};
-	rootObject = AA0001000000000000000000 /* Project object */;
+	rootObject = BB00PROJ00000000000000001 /* Project object */;
 }
