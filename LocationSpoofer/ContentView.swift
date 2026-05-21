@@ -18,7 +18,6 @@ struct ContentView: View {
         ZStack(alignment: .top) {
             MapView(region: $region, selectedPin: $selectedPin)
                 .ignoresSafeArea()
-                .onTapGesture { }
 
             VStack(spacing: 0) {
                 searchBar
@@ -225,7 +224,7 @@ struct MapView: UIViewRepresentable {
 }
 
 struct SearchResult: Identifiable {
-    let id = Date().timeIntervalSince1970.description + String(Int.random(in: 0...999))
+    let id = UUID().uuidString
     let title: String
     let subtitle: String
     let completion: MKLocalSearchCompletion
