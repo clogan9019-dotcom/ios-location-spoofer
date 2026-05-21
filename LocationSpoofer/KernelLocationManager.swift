@@ -12,6 +12,7 @@ final class KernelLocationManager: ObservableObject {
     @Published var exploitReady: Bool    = false
     @Published var exploitError: String? = nil
     @Published var t1szBootDisplay: String = "Auto"
+    @Published var logFilePath: String   = ""
 
     private let kLastLat      = "spoofer_last_lat"
     private let kLastLon      = "spoofer_last_lon"
@@ -23,7 +24,24 @@ final class KernelLocationManager: ObservableObject {
     private var workItem: DispatchWorkItem?
 
     private init() {
+        filelog_init()
+        logFilePath = String(cString: filelog_path())
         loadT1szDisplay()
+        logDeviceInfo()
+    }
+
+    // MARK: - Device diagnostics
+
+    private func logDeviceInfo() {
+        let device = UIDevice.current
+        flog("--- Device Info ---")
+        flog("Model     : \(device.model)")
+        flog("iOS       : \(device.systemVersion)")
+        flog("Name      : \(device.name)")
+        flog("t1sz cfg  : \(t1szBootDisplay)")
+        flog("Log file  : \(logFilePath)")
+        flog("-------------------")
+        filelog_flush()
     }
 
     // MARK: - t1sz_boot
@@ -49,6 +67,7 @@ final class KernelLocationManager: ObservableObject {
         UserDefaults.standard.set(value, forKey: kLaraT1sz)
         UserDefaults.standard.synchronize()
         t1szBootDisplay = String(format: "0x%02X (manual)", value)
+        flog("t1sz_boot override set to 0x\(String(format: "%02X", value))")
         return true
     }
 
@@ -57,27 +76,47 @@ final class KernelLocationManager: ObservableObject {
         UserDefaults.standard.removeObject(forKey: kLaraT1sz)
         UserDefaults.standard.synchronize()
         t1szBootDisplay = "Auto (not yet resolved)"
+        flog("t1sz_boot override cleared — will auto-detect")
     }
 
-    // MARK: - Logs
+    // MARK: - Logging helpers
+
+    private func flog(_ msg: String) {
+        filelog(msg)
+        appendLog(msg)
+    }
 
     func appendLog(_ msg: String) {
         DispatchQueue.main.async { self.logs.append(msg) }
     }
 
-    func clearLogs() { logs = [] }
+    func clearLogs() {
+        logs = []
+        filelog_clear()
+        filelog_init()
+        flog("Log cleared by user")
+    }
 
     // MARK: - Foreground restore
 
     func restoreIfNeeded() {
-        guard UserDefaults.standard.bool(forKey: kWasConnected) else { return }
+        flog("restoreIfNeeded: checking...")
+        guard UserDefaults.standard.bool(forKey: kWasConnected) else {
+            flog("restoreIfNeeded: was not connected, skipping")
+            return
+        }
         let lat = UserDefaults.standard.double(forKey: kLastLat)
         let lon = UserDefaults.standard.double(forKey: kLastLon)
-        guard lat != 0 || lon != 0 else { return }
-
+        guard lat != 0 || lon != 0 else {
+            flog("restoreIfNeeded: no saved coords, skipping")
+            return
+        }
+        flog(String(format: "restoreIfNeeded: restoring %.5f, %.5f", lat, lon))
         if ds_is_ready() {
+            flog("restoreIfNeeded: kernel still ready, re-writing location")
             DispatchQueue.global(qos: .userInitiated).async { self.writeLocation(lat: lat, lon: lon) }
         } else {
+            flog("restoreIfNeeded: kernel not ready, re-running exploit")
             runExploit { [weak self] success in
                 guard let self, success else { return }
                 self.applySpoof(lat: lat, lon: lon)
@@ -88,7 +127,7 @@ final class KernelLocationManager: ObservableObject {
     // MARK: - Exploit runner
 
     func runExploit(completion: ((Bool) -> Void)? = nil) {
-        guard !isRunning else { return }
+        guard !isRunning else { flog("runExploit: already running, ignoring"); return }
 
         DispatchQueue.main.async {
             self.isRunning       = true
@@ -100,36 +139,47 @@ final class KernelLocationManager: ObservableObject {
         }
 
         let override = UserDefaults.standard.object(forKey: kT1szOverride) as? UInt64 ?? 0
-        if override != 0 { UserDefaults.standard.set(override, forKey: kLaraT1sz) }
+        if override != 0 {
+            UserDefaults.standard.set(override, forKey: kLaraT1sz)
+            flog(String(format: "runExploit: applying t1sz_boot override 0x%02X", override))
+        } else {
+            flog("runExploit: using auto t1sz_boot")
+        }
 
+        flog("runExploit: setting log/progress callbacks")
         ds_set_log_callback { msg in
             guard let msg else { return }
             let s = String(cString: msg)
+            filelog(("[ds_run] " + s))
             KernelLocationManager.shared.appendLog(s)
             DispatchQueue.main.async { KernelLocationManager.shared.status = s }
         }
         ds_set_progress_callback { pct in
-            DispatchQueue.main.async { KernelLocationManager.shared.progress = Double(pct) }
+            let p = Double(pct)
+            filelog_fmt("[ds_run] progress: %.1f%%", p * 100)
+            DispatchQueue.main.async { KernelLocationManager.shared.progress = p }
         }
 
         let item = DispatchWorkItem { [weak self] in
             guard let self else { return }
 
             if self.cancelRequested {
-                DispatchQueue.main.async {
-                    self.isRunning = false; self.status = "Cancelled"; self.progress = 0
-                }
+                self.flog("runExploit: cancelled before start")
+                DispatchQueue.main.async { self.isRunning = false; self.status = "Cancelled"; self.progress = 0 }
                 completion?(false); return
             }
 
-            // ── ds_run() wrapped in signal-based crash guard ──────────────
+            self.flog("runExploit: calling ds_run_safe()...")
+            filelog_flush()
+
             let ret = ds_run_safe()
 
             if ret < 0 {
-                // A signal was caught (SIGSEGV / SIGBUS / SIGILL etc.)
                 let sigName = String(cString: ds_run_safe_signal_name())
                 let err = "Exploit crashed — caught \(sigName)"
-                self.appendLog("CRASH: \(err)")
+                self.flog("CRASH: \(err)")
+                self.flog("CRASH: Check log file at \(filelog_path() != nil ? String(cString: filelog_path()) : "unknown")")
+                filelog_flush()
                 DispatchQueue.main.async {
                     self.isRunning = false; self.exploitError = err
                     self.status = err; self.progress = 0
@@ -138,15 +188,17 @@ final class KernelLocationManager: ObservableObject {
             }
 
             if self.cancelRequested {
-                DispatchQueue.main.async {
-                    self.isRunning = false; self.status = "Stopped"; self.progress = 0
-                }
+                self.flog("runExploit: cancelled after ds_run")
+                DispatchQueue.main.async { self.isRunning = false; self.status = "Stopped"; self.progress = 0 }
                 completion?(false); return
             }
+
+            self.flog("runExploit: ds_run_safe() returned \(ret), ds_is_ready=\(ds_is_ready())")
 
             guard ret == 0, ds_is_ready() else {
                 let err = "Exploit failed (code \(ret))"
-                self.appendLog("ERROR: \(err)")
+                self.flog("ERROR: \(err)")
+                filelog_flush()
                 DispatchQueue.main.async {
                     self.isRunning = false; self.exploitError = err
                     self.status = err; self.progress = 0
@@ -154,13 +206,17 @@ final class KernelLocationManager: ObservableObject {
                 completion?(false); return
             }
 
-            self.appendLog("Kernel R/W ready — initialising VFS...")
+            self.flog("Kernel R/W acquired — initialising VFS...")
             DispatchQueue.main.async { self.status = "Kernel R/W ready — initialising VFS..." }
 
             let vfsRet = vfs_init()
-            guard vfsRet == 0 || vfs_isready() else {
+            let vfsReady = vfs_isready()
+            self.flog("vfs_init() = \(vfsRet), vfs_isready() = \(vfsReady)")
+            filelog_flush()
+
+            guard vfsRet == 0 || vfsReady else {
                 let err = "VFS init failed (\(vfsRet))"
-                self.appendLog("ERROR: \(err)")
+                self.flog("ERROR: \(err)")
                 DispatchQueue.main.async {
                     self.isRunning = false; self.exploitError = err
                     self.status = err; self.progress = 0
@@ -168,7 +224,8 @@ final class KernelLocationManager: ObservableObject {
                 completion?(false); return
             }
 
-            self.appendLog("Exploit complete — kernel ready")
+            self.flog("All systems ready — exploit complete")
+            filelog_flush()
             DispatchQueue.main.async {
                 self.isRunning = false; self.exploitReady = true
                 self.progress = 1.0; self.status = "Kernel ready"
@@ -182,11 +239,10 @@ final class KernelLocationManager: ObservableObject {
     }
 
     func cancelExploit() {
+        flog("cancelExploit: force-stop requested")
         cancelRequested = true
         workItem?.cancel()
-        DispatchQueue.main.async {
-            self.isRunning = false; self.status = "Stopped by user"; self.progress = 0
-        }
+        DispatchQueue.main.async { self.isRunning = false; self.status = "Stopped by user"; self.progress = 0 }
     }
 
     // MARK: - Location spoofing
@@ -198,6 +254,7 @@ final class KernelLocationManager: ObservableObject {
         if exploitReady {
             DispatchQueue.global(qos: .userInitiated).async { self.writeLocation(lat: lat, lon: lon) }
         } else {
+            flog("connect: kernel not ready, running exploit first")
             runExploit { [weak self] success in
                 guard let self, success else { return }
                 self.applySpoof(lat: lat, lon: lon)
@@ -209,6 +266,7 @@ final class KernelLocationManager: ObservableObject {
         UserDefaults.standard.set(lat,  forKey: kLastLat)
         UserDefaults.standard.set(lon,  forKey: kLastLon)
         UserDefaults.standard.set(true, forKey: kWasConnected)
+        flog(String(format: "applySpoof: %.5f, %.5f", lat, lon))
         DispatchQueue.global(qos: .userInitiated).async { self.writeLocation(lat: lat, lon: lon) }
     }
 
@@ -220,6 +278,7 @@ final class KernelLocationManager: ObservableObject {
     }
 
     func disconnect() {
+        flog("disconnect: clearing spoof")
         isConnected = false
         status = "Disconnected"
         UserDefaults.standard.set(false, forKey: kWasConnected)
@@ -228,48 +287,48 @@ final class KernelLocationManager: ObservableObject {
     // MARK: - Private
 
     private func writeLocation(lat: Double, lon: Double) {
-        // 1. Write the simulated-location plist via VFS
+        flog(String(format: "writeLocation: %.5f, %.5f", lat, lon))
+
         var plist = locationPlist(lat: lat, lon: lon)
         let plistPath = "/private/var/mobile/Library/Preferences/com.apple.locationd.plist"
+        var vfsResult: Int32 = -1
         plist.withUTF8 { ptr in
-            _ = vfs_write(plistPath, ptr.baseAddress!, ptr.count, 0)
+            vfsResult = vfs_write(plistPath, ptr.baseAddress!, ptr.count, 0)
         }
-        appendLog("VFS: plist written")
+        flog("writeLocation: vfs_write plist -> \(vfsResult)")
 
-        // 2. Kernel heap-scan patch (existing reliable path)
         patchLocationdInKernel(lat: lat, lon: lon)
 
-        // 3. RemoteCall: notify locationd from inside its own process so it
-        //    flushes its preference cache and picks up the plist immediately.
         DispatchQueue.global(qos: .background).async { [weak self] in
             let rcRet = rc_locationd_reload_plist()
-            self?.appendLog(rcRet == 0
-                ? "RC: locationd plist reload triggered"
-                : "RC: notify skipped (code \(rcRet)) — heap patch still active")
+            self?.flog("writeLocation: rc_locationd_reload -> \(rcRet == 0 ? "ok" : "skipped (code \(rcRet))")")
         }
 
         DispatchQueue.main.async {
             self.isConnected = true
             self.status = String(format: "Spoofing %.5f, %.5f", lat, lon)
         }
+        filelog_flush()
     }
 
     private func patchLocationdInKernel(lat: Double, lon: Double) {
-        guard ds_is_ready() else { return }
+        guard ds_is_ready() else { flog("patchLocationdInKernel: ds not ready, skipping"); return }
         let procPtr = proc_find_by_name("locationd")
-        guard procPtr != 0 else { return }
+        guard procPtr != 0 else { flog("patchLocationdInKernel: locationd proc not found"); return }
+        flog(String(format: "patchLocationdInKernel: found locationd proc @ 0x%llX", procPtr))
         scanAndPatch(procPtr: procPtr, lat: lat, lon: lon)
     }
 
     private func scanAndPatch(procPtr: UInt64, lat: Double, lon: Double) {
         let task  = proc_task(procPtr)
-        guard task != 0 else { return }
+        guard task != 0 else { flog("scanAndPatch: proc_task == 0"); return }
         let vmMap = task_get_vm_map(task)
-        guard vmMap != 0 else { return }
+        guard vmMap != 0 else { flog("scanAndPatch: vm_map == 0"); return }
 
         let hdr      = vmMap + UInt64(off_vm_map_hdr)
         var entry    = ds_kread64(hdr + UInt64(off_vm_map_header_links_next))
         let sentinel = hdr
+        var patched  = 0
 
         for _ in 0..<2048 {
             guard entry != 0, entry != sentinel else { break }
@@ -289,12 +348,14 @@ final class KernelLocationManager: ObservableObject {
                         && abs(rLat) > 0.01 && abs(rLon) > 0.01 {
                         ds_kwrite64(addr,      lat.bitPattern)
                         ds_kwrite64(addr &+ 8, lon.bitPattern)
+                        patched += 1
                     }
                     addr &+= 8
                 }
             }
             entry = ds_kread64(entry + UInt64(off_vm_map_entry_links_next))
         }
+        flog("scanAndPatch: patched \(patched) coordinate pair(s)")
     }
 
     private func locationPlist(lat: Double, lon: Double) -> String {
