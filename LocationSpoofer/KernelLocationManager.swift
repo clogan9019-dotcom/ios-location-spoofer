@@ -25,7 +25,8 @@ final class KernelLocationManager: NSObject, ObservableObject {
     private var workItem: DispatchWorkItem?
     private let bgLocationManager = CLLocationManager()
 
-    private init() {
+    private override init() {
+        super.init()
         filelog_init()
         logFilePath = String(cString: filelog_path())
         loadT1szDisplay()
