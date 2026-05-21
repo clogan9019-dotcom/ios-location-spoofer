@@ -156,7 +156,7 @@ final class KernelLocationManager: ObservableObject {
         }
         ds_set_progress_callback { pct in
             let p = Double(pct)
-            filelog_fmt("[ds_run] progress: %.1f%%", p * 100)
+            filelog(String(format: "[ds_run] progress: %.1f%%", p * 100))
             DispatchQueue.main.async { KernelLocationManager.shared.progress = p }
         }
 
@@ -291,7 +291,7 @@ final class KernelLocationManager: ObservableObject {
 
         var plist = locationPlist(lat: lat, lon: lon)
         let plistPath = "/private/var/mobile/Library/Preferences/com.apple.locationd.plist"
-        var vfsResult: Int32 = -1
+        var vfsResult: Int64 = -1
         plist.withUTF8 { ptr in
             vfsResult = vfs_write(plistPath, ptr.baseAddress!, ptr.count, 0)
         }
