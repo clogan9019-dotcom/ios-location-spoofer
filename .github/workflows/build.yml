@@ -1,0 +1,65 @@
+name: Build IPA
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-14
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Select Xcode
+        run: sudo xcode-select -s /Applications/Xcode_16.2.app/Contents/Developer
+
+      - name: Show Xcode version
+        run: xcodebuild -version
+
+      - name: Build Archive (unsigned)
+        run: |
+          xcodebuild archive \
+            -project LocationSpoofer.xcodeproj \
+            -scheme LocationSpoofer \
+            -configuration Release \
+            -destination "generic/platform=iOS" \
+            -archivePath "$RUNNER_TEMP/LocationSpoofer.xcarchive" \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO \
+            DEVELOPMENT_TEAM="" \
+            | xcpretty || true
+
+      - name: Export unsigned IPA
+        run: |
+          mkdir -p "$RUNNER_TEMP/ipa"
+          APP_PATH=$(find "$RUNNER_TEMP/LocationSpoofer.xcarchive" -name "*.app" | head -1)
+          if [ -z "$APP_PATH" ]; then
+            echo "No .app found in archive, listing archive contents:"
+            find "$RUNNER_TEMP/LocationSpoofer.xcarchive" -type f | head -40
+            exit 1
+          fi
+          echo "Found app: $APP_PATH"
+          mkdir -p "$RUNNER_TEMP/ipa/Payload"
+          cp -r "$APP_PATH" "$RUNNER_TEMP/ipa/Payload/"
+          cd "$RUNNER_TEMP/ipa"
+          zip -r "$RUNNER_TEMP/LocationSpoofer.ipa" Payload
+          echo "IPA created successfully"
+          ls -lh "$RUNNER_TEMP/LocationSpoofer.ipa"
+
+      - name: Upload IPA artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: LocationSpoofer-unsigned
+          path: ${{ runner.temp }}/LocationSpoofer.ipa
+          retention-days: 30
+
+      - name: Upload Archive artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: LocationSpoofer-archive
+          path: ${{ runner.temp }}/LocationSpoofer.xcarchive
+          retention-days: 7
