@@ -29,6 +29,9 @@ jobs:
       - name: Show Xcode version
         run: xcodebuild -version
 
+      - name: Install ldid
+        run: brew install ldid
+
       - name: Build Archive (unsigned)
         run: |
           xcodebuild archive \
@@ -44,7 +47,7 @@ jobs:
             LIBRARY_SEARCH_PATHS="$GITHUB_WORKSPACE/LocationSpoofer/lib" \
 
 
-      - name: Export unsigned IPA
+      - name: Export and sign IPA with ldid
         run: |
           mkdir -p "$RUNNER_TEMP/ipa"
           APP_PATH=$(find "$RUNNER_TEMP/LocationSpoofer.xcarchive" -name "*.app" | head -1)
@@ -56,6 +59,12 @@ jobs:
           echo "Found app: $APP_PATH"
           mkdir -p "$RUNNER_TEMP/ipa/Payload"
           cp -r "$APP_PATH" "$RUNNER_TEMP/ipa/Payload/"
+
+          BINARY="$RUNNER_TEMP/ipa/Payload/LocationSpoofer.app/LocationSpoofer"
+          echo "Signing binary with ldid: $BINARY"
+          ldid -SLocationSpoofer/LocationSpoofer.entitlements "$BINARY"
+          echo "ldid signing complete"
+
           cd "$RUNNER_TEMP/ipa"
           zip -r "$RUNNER_TEMP/LocationSpoofer.ipa" Payload
           echo "IPA created successfully"
@@ -89,4 +98,3 @@ jobs:
             No jailbreak required. Works on stock iOS.
           draft: false
           prerelease: false
-
