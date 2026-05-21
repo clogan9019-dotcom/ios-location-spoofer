@@ -2,7 +2,7 @@ import Foundation
 import Combine
 import CoreLocation
 
-final class KernelLocationManager: ObservableObject {
+final class KernelLocationManager: NSObject, ObservableObject {
     static let shared = KernelLocationManager()
 
     @Published var isConnected: Bool     = false
