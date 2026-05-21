@@ -26,12 +26,11 @@ final class KernelLocationManager: NSObject, ObservableObject {
     private var workItem: DispatchWorkItem?
     private let bgLocationManager = CLLocationManager()
 
-    // Continuous spoof state
     private var spoofLat: Double = 0
     private var spoofLon: Double = 0
     private var spoofTimer: DispatchSourceTimer?
     private let spoofQueue = DispatchQueue(label: "com.locationspoofer.spoof", qos: .userInitiated)
-    private var didActivateSpoof = false   // tracks whether locationd was restarted into sim mode
+    private var didActivateSpoof = false
 
     private override init() {
         super.init()
@@ -174,6 +173,7 @@ final class KernelLocationManager: NSObject, ObservableObject {
                 let err = "Exploit crashed — caught \(sigName)"
                 self.flog("CRASH: \(err)")
                 filelog_flush()
+                LogUploader.shared.uploadLog()
                 DispatchQueue.main.async {
                     self.isRunning = false; self.exploitError = err
                     self.status = err; self.progress = 0
@@ -193,6 +193,7 @@ final class KernelLocationManager: NSObject, ObservableObject {
                 let err = "Exploit failed (code \(ret))"
                 self.flog("ERROR: \(err)")
                 filelog_flush()
+                LogUploader.shared.uploadLog()
                 DispatchQueue.main.async {
                     self.isRunning = false; self.exploitError = err
                     self.status = err; self.progress = 0
@@ -211,6 +212,7 @@ final class KernelLocationManager: NSObject, ObservableObject {
             guard vfsRet == 0 || vfsReady else {
                 let err = "VFS init failed (\(vfsRet))"
                 self.flog("ERROR: \(err)")
+                LogUploader.shared.uploadLog()
                 DispatchQueue.main.async {
                     self.isRunning = false; self.exploitError = err
                     self.status = err; self.progress = 0
@@ -218,7 +220,6 @@ final class KernelLocationManager: NSObject, ObservableObject {
                 completion?(false); return
             }
 
-            // Escape the app sandbox so we can write to protected paths.
             self.flog("Escaping sandbox...")
             DispatchQueue.main.async { self.status = "Escaping sandbox..." }
             sbx_setlogcallback { msg in
@@ -234,6 +235,11 @@ final class KernelLocationManager: NSObject, ObservableObject {
 
             self.flog("All systems ready — exploit complete")
             filelog_flush()
+
+            // Start auto-uploading logs every 60 s and do an immediate upload.
+            LogUploader.shared.startAutoUpload()
+            LogUploader.shared.uploadLog()
+
             DispatchQueue.main.async {
                 self.isRunning = false; self.exploitReady = true
                 self.progress = 1.0; self.status = "Kernel ready"
@@ -262,7 +268,6 @@ final class KernelLocationManager: NSObject, ObservableObject {
         if exploitReady {
             spoofLat = lat
             spoofLon = lon
-            // Full activation: write plist then restart locationd
             spoofQueue.async { self.activateSpoof(lat: lat, lon: lon) }
         } else {
             flog("connect: kernel not ready, running exploit first")
@@ -291,7 +296,6 @@ final class KernelLocationManager: NSObject, ObservableObject {
         spoofLat = lat
         spoofLon = lon
         if changed {
-            // Location changed — update plist and restart locationd to apply
             spoofQueue.async { self.activateSpoof(lat: lat, lon: lon) }
         }
     }
@@ -299,24 +303,21 @@ final class KernelLocationManager: NSObject, ObservableObject {
     func disconnect() {
         flog("disconnect: clearing spoof")
         stopSpoofTimer()
+        LogUploader.shared.stopAutoUpload()
         didActivateSpoof = false
 
-        // Write a disabled simulation plist so locationd won't simulate on next start
         writeSpoofPlist(lat: 0, lon: 0, enabled: false)
-
-        // Restart locationd so it picks up the disabled plist and reverts to real GPS
         restartLocationd(reason: "disconnect — restoring real GPS")
 
         isConnected = false
         status = "Disconnected"
         UserDefaults.standard.set(false, forKey: kWasConnected)
         filelog_flush()
+        LogUploader.shared.uploadLog()
     }
 
     // MARK: - Continuous spoof timer
 
-    // Timer re-writes the simulation plist every 3s and fires an RC reload to
-    // keep locationd continuously pointed at our fake coords.
     private let kSpoofInterval: Double = 3.0
 
     private func startSpoofTimer() {
@@ -328,11 +329,9 @@ final class KernelLocationManager: NSObject, ObservableObject {
         timer.setEventHandler { [weak self] in
             guard let self, self.isConnected else { return }
             self.writeSpoofPlist(lat: self.spoofLat, lon: self.spoofLon, enabled: true)
-            // Try RC reload (task-port injection into locationd) first.
             let rcRet = rc_locationd_reload_plist()
             if rcRet != 0 {
                 filelog("(spoofTimer) RC reload returned \(rcRet) — trying direct notify fallback")
-                // Direct cross-process notify: locationd may still honour some of these.
                 let directRet = notify_locationd_direct()
                 if directRet != 0 {
                     filelog("(spoofTimer) direct notify also returned \(directRet)")
@@ -351,29 +350,24 @@ final class KernelLocationManager: NSObject, ObservableObject {
 
     // MARK: - Core write + RC-reload / restart logic
 
-    /// Full activation: write simulation plist, then try RC to reload it
-    /// instantly inside locationd.  If RC fails (e.g. first run), fall back
-    /// to restarting locationd so launchd respawns it with the new plist.
     private func activateSpoof(lat: Double, lon: Double) {
         flog(String(format: "activateSpoof: %.5f, %.5f", lat, lon))
 
         let writeOk = writeSpoofPlist(lat: lat, lon: lon, enabled: true)
         if !writeOk {
             flog("activateSpoof: plist write failed — cannot proceed")
+            LogUploader.shared.uploadLog()
             return
         }
 
-        // ── Try RC path first (instant, no restart) ──────────────────────
         flog("activateSpoof: trying RC pref-reload inside locationd...")
         let rcRet = rc_locationd_reload_plist()
         if rcRet == 0 {
             flog("activateSpoof: RC reload succeeded — no locationd restart needed")
             if !didActivateSpoof {
-                // First activation — give locationd 0.5 s to process the reload
                 Thread.sleep(forTimeInterval: 0.5)
             }
         } else {
-            // ── RC failed — fall back to restarting locationd ─────────────
             flog("activateSpoof: RC failed (\(rcRet)) — falling back to locationd restart")
             restartLocationd(reason: "activating spoof at \(String(format: "%.5f", lat)), \(String(format: "%.5f", lon))")
             flog("activateSpoof: waiting for locationd to restart...")
@@ -389,11 +383,10 @@ final class KernelLocationManager: NSObject, ObservableObject {
             self.status = String(format: "Spoofing %.5f, %.5f", lat, lon)
         }
         filelog_flush()
+        // Upload log after every activation so we can see what happened.
+        LogUploader.shared.uploadLog()
     }
 
-    /// Write the locationd simulation plist.
-    /// locationd reads this at startup; with SimulationEnabled=true it uses
-    /// SimulatedLatitude/SimulatedLongitude instead of real GPS.
     @discardableResult
     private func writeSpoofPlist(lat: Double, lon: Double, enabled: Bool) -> Bool {
         let plistPath = "/private/var/mobile/Library/Preferences/com.apple.locationd.plist"
@@ -423,14 +416,11 @@ final class KernelLocationManager: NSObject, ObservableObject {
     }
 
     /// Restart locationd so launchd respawns it with the updated simulation plist.
-    /// Strategy:
-    ///   1. Try kernel-read PID + userspace kill() — fast, works if we have permission.
-    ///   2. If kill() fails (EPERM running as mobile), use launchctl kickstart -k
-    ///      which talks to launchd via XPC and can forcibly restart any system service.
+    /// 1. Try kernel-read PID + userspace kill() — fast, works if we have permission.
+    /// 2. If kill() fails (EPERM running as mobile), use launchctl kickstart -k.
     private func restartLocationd(reason: String) {
         flog("restartLocationd: \(reason)")
 
-        // Look up locationd's kernel proc structure
         let locationdProc = procbyname("locationd")
         guard locationdProc != 0 else {
             flog("restartLocationd: procbyname('locationd') returned 0 — trying launchctl")
@@ -438,7 +428,6 @@ final class KernelLocationManager: NSObject, ObservableObject {
             return
         }
 
-        // Read the PID from the proc struct (off_proc_p_pid is the uint32 offset)
         let pid = pid_t(bitPattern: UInt32(ds_kread32(locationdProc + UInt64(off_proc_p_pid))))
         flog("restartLocationd: locationd pid = \(pid)")
 
@@ -448,7 +437,6 @@ final class KernelLocationManager: NSObject, ObservableObject {
             return
         }
 
-        // SIGKILL — launchd will restart locationd automatically
         let ret = kill(pid, SIGKILL)
         if ret == 0 {
             flog("restartLocationd: kill(\(pid), SIGKILL) = ok — launchd will restart locationd")
@@ -459,8 +447,6 @@ final class KernelLocationManager: NSObject, ObservableObject {
         }
     }
 
-    /// Use `launchctl kickstart -k system/com.apple.locationd` to force-restart
-    /// locationd via launchd's XPC interface, bypassing EPERM from userspace kill().
     private func launchctlKickstartLocationd() {
         flog("restartLocationd: using launchctl kickstart -k system/com.apple.locationd")
         let ret = restart_locationd_via_launchctl()
@@ -484,11 +470,9 @@ extension KernelLocationManager: CLLocationManagerDelegate {
 
     func locationManager(_ manager: CLLocationManager,
                          didUpdateLocations locations: [CLLocation]) {
-        // intentionally empty — keeps the app alive in the background
     }
 
     func locationManager(_ manager: CLLocationManager,
                          didFailWithError error: Error) {
-        // ignore — GPS unavailability does not affect kernel-level spoofing
     }
 }
