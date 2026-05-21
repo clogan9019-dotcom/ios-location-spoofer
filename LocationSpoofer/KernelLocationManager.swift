@@ -1,5 +1,6 @@
 import Foundation
 import Combine
+import CoreLocation
 
 final class KernelLocationManager: ObservableObject {
     static let shared = KernelLocationManager()
@@ -22,12 +23,24 @@ final class KernelLocationManager: ObservableObject {
 
     private var cancelRequested = false
     private var workItem: DispatchWorkItem?
+    private let bgLocationManager = CLLocationManager()
 
     private init() {
         filelog_init()
         logFilePath = String(cString: filelog_path())
         loadT1szDisplay()
         logDeviceInfo()
+        setupBackgroundLocation()
+    }
+
+    private func setupBackgroundLocation() {
+        bgLocationManager.delegate = self
+        bgLocationManager.desiredAccuracy = kCLLocationAccuracyThreeKilometers
+        bgLocationManager.distanceFilter = kCLDistanceFilterNone
+        bgLocationManager.allowsBackgroundLocationUpdates = true
+        bgLocationManager.pausesLocationUpdatesAutomatically = false
+        bgLocationManager.requestAlwaysAuthorization()
+        bgLocationManager.startUpdatingLocation()
     }
 
     // MARK: - Device diagnostics
@@ -301,7 +314,10 @@ final class KernelLocationManager: ObservableObject {
 
         DispatchQueue.global(qos: .background).async { [weak self] in
             let rcRet = rc_locationd_reload_plist()
-            self?.flog("writeLocation: rc_locationd_reload -> \(rcRet == 0 ? "ok" : "skipped (code \(rcRet))")")
+            if rcRet != 0 {
+                notify_locationd_direct()
+            }
+            self?.flog("writeLocation: rc_locationd_reload -> \(rcRet == 0 ? "ok (RemoteCall)" : "skipped (code \(rcRet)), tried direct notify")")
         }
 
         DispatchQueue.main.async {
@@ -335,8 +351,8 @@ final class KernelLocationManager: ObservableObject {
             let start     = ds_kread64(entry + 0x10)
             let end       = ds_kread64(entry + 0x18)
             let size      = end &- start
-            let flagsWord = ds_kread64(entry + UInt64(off_vm_map_entry_vme_alias))
-            let curProt   = UInt8((flagsWord >> 7) & 0x7)
+            let flagsWord = ds_kread64(entry + 0x48)
+            let curProt   = UInt8((flagsWord >> 7) & 0xF)
             if curProt & 0x3 == 0x3, size >= 16, size <= 0x800_000 {
                 var addr = start
                 while addr &+ 16 <= end {
@@ -370,5 +386,26 @@ final class KernelLocationManager: ObservableObject {
         </dict>
         </plist>
         """
+    }
+}
+
+// MARK: - CLLocationManagerDelegate (background keep-alive)
+
+extension KernelLocationManager: CLLocationManagerDelegate {
+    func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
+        let status = manager.authorizationStatus
+        if status == .authorizedAlways || status == .authorizedWhenInUse {
+            manager.startUpdatingLocation()
+        }
+    }
+
+    func locationManager(_ manager: CLLocationManager,
+                         didUpdateLocations locations: [CLLocation]) {
+        // intentionally empty — keeps the app alive in the background
+    }
+
+    func locationManager(_ manager: CLLocationManager,
+                         didFailWithError error: Error) {
+        // ignore — GPS unavailability doesn't affect kernel-level spoofing
     }
 }
