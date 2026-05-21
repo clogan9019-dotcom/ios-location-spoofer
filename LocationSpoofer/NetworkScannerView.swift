@@ -157,16 +157,14 @@ struct NetworkScannerView: View {
                 }
             }
             .padding(12)
-            .background(
-                Group {
-                    if selected {
-                        LinearGradient(colors: [.blue, .purple],
-                                       startPoint: .leading, endPoint: .trailing)
-                    } else {
-                        Color(.systemGroupedBackground)
-                    }
-                },
-                in: RoundedRectangle(cornerRadius: 10))
+            .background {
+                RoundedRectangle(cornerRadius: 10)
+                    .fill(selected
+                          ? AnyShapeStyle(LinearGradient(colors: [.blue, .purple],
+                                                         startPoint: .leading,
+                                                         endPoint: .trailing))
+                          : AnyShapeStyle(Color(.systemGroupedBackground)))
+            }
         }
         .buttonStyle(.plain)
         .disabled(locked)
