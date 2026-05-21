@@ -3,6 +3,7 @@
 #ifndef LocationSpoofer_Bridging_Header_h
 #define LocationSpoofer_Bridging_Header_h
 
+#include "CrashGuard.h"
 #include "kexploit/darksword.h"
 #include "kexploit/offsets.h"
 #include "kexploit/utils.h"
@@ -14,6 +15,7 @@
 #include "kexploit/pe/apfs.h"
 #include "kexploit/pe/rc.h"
 #include "kexploit/pe/xpaci.h"
+#include "kexploit/pe/locationd.h"
 #include "kexploit/TaskRop/RemoteCall.h"
 #include "kexploit/TaskRop/vm.h"
 #include "kexploit/TaskRop/exc.h"
