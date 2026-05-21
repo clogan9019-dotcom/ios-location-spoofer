@@ -7,6 +7,9 @@ on:
       - 'v*'
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: macos-14
@@ -80,9 +83,9 @@ jobs:
           body: |
             ## LocationSpoofer ${{ github.ref_name }}
 
-            Unsigned IPA — sideload with your preferred tool (e.g. Sideloadly, AltStore, TrollStore).
+            Unsigned IPA — sideload with Sideloadly, AltStore, or TrollStore.
 
-            **Requires a jailbroken device.**
+            No jailbreak required. Works on stock iOS.
           files: ${{ runner.temp }}/LocationSpoofer.ipa
           draft: false
           prerelease: false
