@@ -2,7 +2,303 @@ import SwiftUI
 import MapKit
 import CoreLocation
 
+// MARK: - Root
+
 struct ContentView: View {
+    @EnvironmentObject var kernelManager: KernelLocationManager
+
+    var body: some View {
+        TabView {
+            HomeView()
+                .tabItem { Label("Exploit", systemImage: "cpu") }
+                .environmentObject(kernelManager)
+
+            ToolsView()
+                .tabItem { Label("Tools", systemImage: "wrench.and.screwdriver.fill") }
+                .environmentObject(kernelManager)
+
+            SettingsView()
+                .tabItem { Label("Settings", systemImage: "gearshape.fill") }
+                .environmentObject(kernelManager)
+        }
+    }
+}
+
+// MARK: - Home (Exploit Runner)
+
+struct HomeView: View {
+    @EnvironmentObject var kernelManager: KernelLocationManager
+    @State private var showLogs = false
+
+    var body: some View {
+        NavigationView {
+            ScrollView {
+                VStack(spacing: 24) {
+                    statusCard
+                    progressCard
+                    actionButtons
+                    if let err = kernelManager.exploitError {
+                        errorCard(err)
+                    }
+                }
+                .padding(20)
+            }
+            .navigationTitle("Kernel Exploit")
+            .navigationBarTitleDisplayMode(.large)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button {
+                        showLogs = true
+                    } label: {
+                        Label("Logs", systemImage: "doc.text.magnifyingglass")
+                    }
+                }
+            }
+            .sheet(isPresented: $showLogs) {
+                LogsView().environmentObject(kernelManager)
+            }
+        }
+    }
+
+    // MARK: Status card
+    private var statusCard: some View {
+        HStack(spacing: 16) {
+            ZStack {
+                Circle()
+                    .fill(statusColor.opacity(0.15))
+                    .frame(width: 52, height: 52)
+                Image(systemName: statusIcon)
+                    .font(.system(size: 22, weight: .semibold))
+                    .foregroundColor(statusColor)
+            }
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Status")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundColor(.secondary)
+                    .textCase(.uppercase)
+                Text(kernelManager.status)
+                    .font(.system(size: 15, weight: .medium))
+                    .foregroundColor(.primary)
+                    .lineLimit(3)
+            }
+            Spacer()
+        }
+        .padding(18)
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 18))
+        .shadow(color: .black.opacity(0.08), radius: 10, y: 4)
+    }
+
+    // MARK: Progress card
+    private var progressCard: some View {
+        VStack(spacing: 20) {
+            ZStack {
+                Circle()
+                    .stroke(Color.secondary.opacity(0.15), lineWidth: 12)
+                    .frame(width: 140, height: 140)
+                Circle()
+                    .trim(from: 0, to: kernelManager.progress)
+                    .stroke(
+                        LinearGradient(
+                            colors: [.blue, .purple],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        ),
+                        style: StrokeStyle(lineWidth: 12, lineCap: .round)
+                    )
+                    .frame(width: 140, height: 140)
+                    .rotationEffect(.degrees(-90))
+                    .animation(.easeInOut(duration: 0.3), value: kernelManager.progress)
+
+                VStack(spacing: 2) {
+                    Text("\(Int(kernelManager.progress * 100))%")
+                        .font(.system(size: 34, weight: .bold, design: .rounded))
+                        .foregroundColor(.primary)
+                    if kernelManager.isRunning {
+                        Text("Running")
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundColor(.secondary)
+                    } else if kernelManager.exploitReady {
+                        Text("Complete")
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundColor(.green)
+                    } else {
+                        Text("Idle")
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundColor(.secondary)
+                    }
+                }
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .padding(24)
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 18))
+        .shadow(color: .black.opacity(0.08), radius: 10, y: 4)
+    }
+
+    // MARK: Action buttons
+    private var actionButtons: some View {
+        VStack(spacing: 12) {
+            if kernelManager.isRunning {
+                Button(role: .destructive) {
+                    kernelManager.cancelExploit()
+                } label: {
+                    Label("Force Stop", systemImage: "stop.circle.fill")
+                        .font(.system(size: 17, weight: .semibold))
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 16)
+                        .background(Color.red.opacity(0.12), in: RoundedRectangle(cornerRadius: 14))
+                        .foregroundColor(.red)
+                }
+            } else {
+                Button {
+                    kernelManager.clearLogs()
+                    kernelManager.runExploit()
+                } label: {
+                    Label(
+                        kernelManager.exploitReady ? "Re-run Exploit" : "Run Exploit",
+                        systemImage: kernelManager.exploitReady ? "arrow.clockwise" : "play.fill"
+                    )
+                    .font(.system(size: 17, weight: .semibold))
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 16)
+                    .background(
+                        LinearGradient(colors: [.blue, .purple],
+                                       startPoint: .leading,
+                                       endPoint: .trailing),
+                        in: RoundedRectangle(cornerRadius: 14)
+                    )
+                    .foregroundColor(.white)
+                }
+                .shadow(color: .blue.opacity(0.3), radius: 8, y: 4)
+
+                if !kernelManager.logs.isEmpty {
+                    Button {
+                        showLogs = true
+                    } label: {
+                        Label("View Logs (\(kernelManager.logs.count) lines)", systemImage: "doc.text")
+                            .font(.system(size: 15, weight: .medium))
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 14)
+                            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 14))
+                            .foregroundColor(.primary)
+                    }
+                }
+            }
+        }
+    }
+
+    // MARK: Error card
+    private func errorCard(_ message: String) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .foregroundColor(.red)
+                Text("Exploit Error")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundColor(.red)
+                Spacer()
+                Button {
+                    kernelManager.exploitError = nil
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .foregroundColor(.secondary)
+                }
+            }
+            Text(message)
+                .font(.system(size: 13, design: .monospaced))
+                .foregroundColor(.primary)
+                .lineLimit(6)
+            Text("The app caught this error safely. You can retry or check your t1sz_boot setting in Settings.")
+                .font(.caption)
+                .foregroundColor(.secondary)
+        }
+        .padding(16)
+        .background(Color.red.opacity(0.08), in: RoundedRectangle(cornerRadius: 14))
+        .overlay(RoundedRectangle(cornerRadius: 14).stroke(Color.red.opacity(0.2)))
+    }
+
+    // MARK: Helpers
+    private var statusColor: Color {
+        if kernelManager.exploitError != nil { return .red }
+        if kernelManager.exploitReady       { return .green }
+        if kernelManager.isRunning          { return .blue }
+        return .secondary
+    }
+
+    private var statusIcon: String {
+        if kernelManager.exploitError != nil { return "exclamationmark.triangle.fill" }
+        if kernelManager.exploitReady       { return "checkmark.seal.fill" }
+        if kernelManager.isRunning          { return "waveform" }
+        return "cpu"
+    }
+}
+
+// MARK: - Logs Sheet
+
+struct LogsView: View {
+    @EnvironmentObject var kernelManager: KernelLocationManager
+    @Environment(\.dismiss) private var dismiss
+    @State private var autoScroll = true
+
+    var body: some View {
+        NavigationView {
+            ScrollViewReader { proxy in
+                ScrollView {
+                    LazyVStack(alignment: .leading, spacing: 2) {
+                        if kernelManager.logs.isEmpty {
+                            Text("No logs yet. Run the exploit to see output here.")
+                                .foregroundColor(.secondary)
+                                .padding(20)
+                        } else {
+                            ForEach(Array(kernelManager.logs.enumerated()), id: \.offset) { i, line in
+                                Text(line)
+                                    .font(.system(size: 12, design: .monospaced))
+                                    .foregroundColor(logColor(line))
+                                    .padding(.horizontal, 16)
+                                    .padding(.vertical, 2)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                    .id(i)
+                            }
+                        }
+                    }
+                    .padding(.vertical, 8)
+                }
+                .background(Color(.systemBackground))
+                .onChange(of: kernelManager.logs.count) { _ in
+                    if autoScroll, let last = kernelManager.logs.indices.last {
+                        withAnimation { proxy.scrollTo(last, anchor: .bottom) }
+                    }
+                }
+            }
+            .navigationTitle("Logs")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button {
+                        kernelManager.clearLogs()
+                    } label: {
+                        Label("Clear", systemImage: "trash")
+                    }
+                }
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Done") { dismiss() }
+                }
+            }
+        }
+    }
+
+    private func logColor(_ line: String) -> Color {
+        let l = line.lowercased()
+        if l.contains("error") || l.contains("fail") || l.contains("crash") { return .red }
+        if l.contains("warn")                                                { return .orange }
+        if l.contains("ready") || l.contains("success") || l.contains("ok") { return .green }
+        return .primary
+    }
+}
+
+// MARK: - Tools (Location Spoofer)
+
+struct ToolsView: View {
     @EnvironmentObject var kernelManager: KernelLocationManager
     @StateObject private var locationSearch = LocationSearchViewModel()
 
@@ -13,29 +309,51 @@ struct ContentView: View {
     @State private var selectedPin: CLLocationCoordinate2D? = CLLocationCoordinate2D(latitude: 40.7128, longitude: -74.0060)
     @State private var searchText = ""
     @State private var showSuggestions = false
-    @State private var showAdvanced = false
 
     var body: some View {
+        NavigationView {
+            ZStack {
+                if kernelManager.exploitReady {
+                    spooferView
+                } else {
+                    lockedView
+                }
+            }
+            .navigationTitle("Location Spoofer")
+            .navigationBarTitleDisplayMode(.inline)
+        }
+    }
+
+    // MARK: Locked overlay
+    private var lockedView: some View {
+        VStack(spacing: 20) {
+            Image(systemName: "lock.shield.fill")
+                .font(.system(size: 56))
+                .foregroundColor(.secondary)
+            Text("Kernel Not Ready")
+                .font(.title2.bold())
+            Text("Go to the Exploit tab and run the exploit first. Once the kernel is ready, the location spoofer will unlock.")
+                .multilineTextAlignment(.center)
+                .foregroundColor(.secondary)
+                .padding(.horizontal, 32)
+            if kernelManager.isRunning {
+                ProgressView()
+                Text("Running… \(Int(kernelManager.progress * 100))%")
+                    .foregroundColor(.secondary)
+            }
+        }
+    }
+
+    // MARK: Map spoofer
+    private var spooferView: some View {
         ZStack(alignment: .top) {
             MapView(region: $region, selectedPin: $selectedPin)
                 .ignoresSafeArea()
 
             VStack(spacing: 0) {
-                HStack(alignment: .center, spacing: 10) {
-                    searchBar
-                    Button {
-                        showAdvanced = true
-                    } label: {
-                        Image(systemName: "gearshape.fill")
-                            .font(.system(size: 18))
-                            .foregroundColor(.secondary)
-                            .padding(12)
-                            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 14))
-                            .shadow(color: .black.opacity(0.12), radius: 8, y: 4)
-                    }
-                }
-                .padding(.top, 56)
-                .padding(.horizontal, 16)
+                searchBar
+                    .padding(.top, 8)
+                    .padding(.horizontal, 16)
 
                 if showSuggestions && !locationSearch.results.isEmpty {
                     suggestionsDropdown
@@ -46,16 +364,12 @@ struct ContentView: View {
 
                 bottomCard
                     .padding(.horizontal, 16)
-                    .padding(.bottom, 34)
+                    .padding(.bottom, 20)
             }
         }
         .onChange(of: searchText) { newValue in
             locationSearch.search(query: newValue)
             showSuggestions = !newValue.isEmpty
-        }
-        .sheet(isPresented: $showAdvanced) {
-            AdvancedSettingsView()
-                .environmentObject(kernelManager)
         }
     }
 
@@ -68,8 +382,7 @@ struct ContentView: View {
                 .onSubmit { showSuggestions = false }
             if !searchText.isEmpty {
                 Button { searchText = ""; showSuggestions = false } label: {
-                    Image(systemName: "xmark.circle.fill")
-                        .foregroundColor(.secondary)
+                    Image(systemName: "xmark.circle.fill").foregroundColor(.secondary)
                 }
             }
         }
@@ -82,20 +395,14 @@ struct ContentView: View {
     private var suggestionsDropdown: some View {
         VStack(alignment: .leading, spacing: 0) {
             ForEach(locationSearch.results.prefix(5)) { result in
-                Button {
-                    selectSearchResult(result)
-                } label: {
+                Button { selectSearchResult(result) } label: {
                     HStack {
                         Image(systemName: "mappin.circle.fill")
                             .foregroundColor(.accentColor)
                             .font(.system(size: 18))
                         VStack(alignment: .leading, spacing: 2) {
-                            Text(result.title)
-                                .font(.system(size: 14, weight: .medium))
-                                .foregroundColor(.primary)
-                            Text(result.subtitle)
-                                .font(.system(size: 12))
-                                .foregroundColor(.secondary)
+                            Text(result.title).font(.system(size: 14, weight: .medium)).foregroundColor(.primary)
+                            Text(result.subtitle).font(.system(size: 12)).foregroundColor(.secondary)
                         }
                         Spacer()
                     }
@@ -112,33 +419,29 @@ struct ContentView: View {
     }
 
     private var bottomCard: some View {
-        VStack(spacing: 16) {
+        VStack(spacing: 14) {
             if let pin = selectedPin {
                 HStack {
                     VStack(alignment: .leading, spacing: 4) {
-                        Text("Spoofed Location")
+                        Text("Selected Location")
                             .font(.system(size: 11, weight: .semibold))
                             .foregroundColor(.secondary)
                             .textCase(.uppercase)
                         Text(String(format: "%.5f, %.5f", pin.latitude, pin.longitude))
                             .font(.system(size: 15, weight: .semibold, design: .monospaced))
-                            .foregroundColor(.primary)
                     }
                     Spacer()
-                    Image(systemName: "location.fill")
-                        .font(.system(size: 22))
-                        .foregroundColor(.accentColor)
+                    Image(systemName: "location.fill").font(.system(size: 22)).foregroundColor(.accentColor)
                 }
                 .padding(.horizontal, 4)
             }
-
             HStack(spacing: 12) {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("Status")
+                    Text("Spoof")
                         .font(.system(size: 11, weight: .semibold))
                         .foregroundColor(.secondary)
                         .textCase(.uppercase)
-                    Text(kernelManager.status)
+                    Text(kernelManager.isConnected ? kernelManager.status : "Off")
                         .font(.system(size: 14, weight: .medium))
                         .foregroundColor(kernelManager.isConnected ? .green : .secondary)
                         .lineLimit(2)
@@ -149,7 +452,7 @@ struct ContentView: View {
                     set: { newVal in
                         if newVal {
                             if let pin = selectedPin {
-                                kernelManager.connect(lat: pin.latitude, lon: pin.longitude)
+                                kernelManager.applySpoof(lat: pin.latitude, lon: pin.longitude)
                             }
                         } else {
                             kernelManager.disconnect()
@@ -161,7 +464,7 @@ struct ContentView: View {
             }
             .padding(.horizontal, 4)
         }
-        .padding(20)
+        .padding(18)
         .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 20))
         .shadow(color: .black.opacity(0.15), radius: 12, y: 6)
     }
@@ -186,21 +489,19 @@ struct ContentView: View {
     }
 }
 
-// MARK: - Advanced Settings Sheet
+// MARK: - Settings
 
-struct AdvancedSettingsView: View {
+struct SettingsView: View {
     @EnvironmentObject var kernelManager: KernelLocationManager
-    @Environment(\.dismiss) private var dismiss
-
     @State private var customHex: String = ""
-    @State private var showError: Bool = false
-    @State private var errorMessage: String = ""
+    @State private var showError = false
+    @State private var errorMessage = ""
 
     private let presets: [(label: String, chip: String, hex: String)] = [
-        ("A12 / A13",      "iPhone XS–11",        "0x19"),
-        ("A14 / A15",      "iPhone 12–13",         "0x19"),
-        ("A16+ / M-series","iPhone 14 Pro+ / iPad", "0x11"),
-        ("A17 Pro",        "iPhone 15 Pro",         "0x11"),
+        ("A12 / A13",        "iPhone XS – 11",        "0x19"),
+        ("A14 / A15",        "iPhone 12 – 13",        "0x19"),
+        ("A16+ / M-series",  "iPhone 14 Pro+ / iPad", "0x11"),
+        ("A17 Pro",          "iPhone 15 Pro",         "0x11"),
     ]
 
     var body: some View {
@@ -213,13 +514,12 @@ struct AdvancedSettingsView: View {
                         Spacer()
                         Text(kernelManager.t1szBootDisplay)
                             .font(.system(.body, design: .monospaced))
-                            .foregroundColor(.primary)
                             .multilineTextAlignment(.trailing)
                     }
                 } header: {
                     Text("t1sz_boot")
                 } footer: {
-                    Text("This value must match your device's chip. A wrong value causes the exploit to mis-sign kernel pointers and fail. Set it manually here if auto-detection produces incorrect results.")
+                    Text("Must match your device's chip. A wrong value mis-signs kernel pointers and causes the exploit to fail.")
                         .font(.caption)
                 }
 
@@ -258,14 +558,10 @@ struct AdvancedSettingsView: View {
                             .keyboardType(.asciiCapable)
                     }
                     if showError {
-                        Text(errorMessage)
-                            .font(.caption)
-                            .foregroundColor(.red)
+                        Text(errorMessage).font(.caption).foregroundColor(.red)
                     }
-                    Button("Apply Custom Value") {
-                        applyCustom()
-                    }
-                    .disabled(customHex.trimmingCharacters(in: .whitespaces).isEmpty)
+                    Button("Apply Custom Value") { applyCustom() }
+                        .disabled(customHex.trimmingCharacters(in: .whitespaces).isEmpty)
                 }
 
                 Section {
@@ -277,23 +573,16 @@ struct AdvancedSettingsView: View {
                         Label("Reset to Auto-Detect", systemImage: "arrow.counterclockwise")
                     }
                 } footer: {
-                    Text("Auto-detect resolves the value from the kernelcache at exploit time. Use this if you're unsure which value to set.")
+                    Text("Auto-detect resolves the value from the kernelcache at exploit time.")
                         .font(.caption)
                 }
             }
-            .navigationTitle("Advanced Settings")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Done") { dismiss() }
-                }
-            }
+            .navigationTitle("Settings")
         }
     }
 
     private func applyPreset(_ hex: String) {
-        let success = kernelManager.setT1szBootOverride(hex)
-        if !success {
+        if !kernelManager.setT1szBootOverride(hex) {
             errorMessage = "Failed to apply preset."
             showError = true
         } else {
@@ -304,17 +593,16 @@ struct AdvancedSettingsView: View {
     private func applyCustom() {
         let trimmed = customHex.trimmingCharacters(in: .whitespaces)
         guard !trimmed.isEmpty else { return }
-        let success = kernelManager.setT1szBootOverride("0x\(trimmed)")
-        if success {
+        if kernelManager.setT1szBootOverride("0x\(trimmed)") {
             showError = false
         } else {
-            errorMessage = "Invalid hex value. Enter digits like 11 or 19."
+            errorMessage = "Invalid hex. Enter digits like 11 or 19."
             showError = true
         }
     }
 }
 
-// MARK: - Map
+// MARK: - MapView
 
 struct MapView: UIViewRepresentable {
     @Binding var region: MKCoordinateRegion
@@ -330,9 +618,7 @@ struct MapView: UIViewRepresentable {
         let tap = UITapGestureRecognizer(target: context.coordinator, action: #selector(Coordinator.handleTap(_:)))
         map.addGestureRecognizer(tap)
         if let pin = selectedPin {
-            let annotation = MKPointAnnotation()
-            annotation.coordinate = pin
-            map.addAnnotation(annotation)
+            let a = MKPointAnnotation(); a.coordinate = pin; map.addAnnotation(a)
         }
         return map
     }
@@ -340,9 +626,7 @@ struct MapView: UIViewRepresentable {
     func updateUIView(_ mapView: MKMapView, context: Context) {
         if let pin = selectedPin {
             mapView.removeAnnotations(mapView.annotations)
-            let annotation = MKPointAnnotation()
-            annotation.coordinate = pin
-            mapView.addAnnotation(annotation)
+            let a = MKPointAnnotation(); a.coordinate = pin; mapView.addAnnotation(a)
         }
         if abs(mapView.region.center.latitude - region.center.latitude) > 0.0001 ||
            abs(mapView.region.center.longitude - region.center.longitude) > 0.0001 {
@@ -355,17 +639,15 @@ struct MapView: UIViewRepresentable {
         init(_ parent: MapView) { self.parent = parent }
 
         @objc func handleTap(_ gesture: UITapGestureRecognizer) {
-            let mapView = gesture.view as! MKMapView
-            let point = gesture.location(in: mapView)
-            let coord = mapView.convert(point, toCoordinateFrom: mapView)
-            parent.selectedPin = coord
+            let map = gesture.view as! MKMapView
+            parent.selectedPin = map.convert(gesture.location(in: map), toCoordinateFrom: map)
         }
 
         func mapView(_ mapView: MKMapView, viewFor annotation: MKAnnotation) -> MKAnnotationView? {
-            let view = MKMarkerAnnotationView(annotation: annotation, reuseIdentifier: "pin")
-            view.markerTintColor = UIColor.systemBlue
-            view.glyphImage = UIImage(systemName: "location.fill")
-            return view
+            let v = MKMarkerAnnotationView(annotation: annotation, reuseIdentifier: "pin")
+            v.markerTintColor = UIColor.systemBlue
+            v.glyphImage = UIImage(systemName: "location.fill")
+            return v
         }
     }
 }
