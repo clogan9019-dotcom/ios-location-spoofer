@@ -411,10 +411,7 @@ final class KernelLocationManager: NSObject, ObservableObject {
         // Look up locationd's kernel proc structure
         let locationdProc = procbyname("locationd")
         guard locationdProc != 0 else {
-            flog("restartLocationd: procbyname('locationd') returned 0")
-            // Try fallback: killproc by name
-            let kr = killproc("locationd")
-            flog("restartLocationd: killproc('locationd') fallback = \(kr)")
+            flog("restartLocationd: procbyname('locationd') returned 0 — cannot restart")
             return
         }
 
@@ -429,14 +426,11 @@ final class KernelLocationManager: NSObject, ObservableObject {
 
         // SIGKILL — launchd will restart locationd automatically
         let ret = kill(pid, SIGKILL)
-        let err = errno
         if ret == 0 {
-            flog("restartLocationd: kill(\(pid), SIGKILL) = ok")
+            flog("restartLocationd: kill(\(pid), SIGKILL) = ok — launchd will restart locationd")
         } else {
-            flog("restartLocationd: kill(\(pid), SIGKILL) = \(ret) (errno \(err): \(String(cString: strerror(err))))")
-            // Fallback to killproc
-            let kr = killproc("locationd")
-            flog("restartLocationd: killproc fallback = \(kr)")
+            let err = errno
+            flog("restartLocationd: kill(\(pid), SIGKILL) = \(ret) (errno \(err))")
         }
     }
 }
