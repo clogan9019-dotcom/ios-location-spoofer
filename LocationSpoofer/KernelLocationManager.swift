@@ -7,13 +7,40 @@ final class KernelLocationManager: ObservableObject {
     @Published var isConnected: Bool = false
     @Published var status: String = "Disconnected"
 
+    private let kLastLat = "spoofer_last_lat"
+    private let kLastLon = "spoofer_last_lon"
+    private let kWasConnected = "spoofer_was_connected"
+
     private init() {}
+
+    // Called on every foreground transition — re-applies location without
+    // re-running the full exploit when the kernel is still ready.
+    func restoreIfNeeded() {
+        guard UserDefaults.standard.bool(forKey: kWasConnected) else { return }
+        let lat = UserDefaults.standard.double(forKey: kLastLat)
+        let lon = UserDefaults.standard.double(forKey: kLastLon)
+        guard lat != 0 || lon != 0 else { return }
+
+        if ds_is_ready() {
+            // Kernel still live — just re-patch without the expensive exploit step
+            DispatchQueue.global(qos: .userInitiated).async {
+                self.writeLocation(lat: lat, lon: lon)
+            }
+        } else {
+            // Kernel lost — full reconnect
+            connect(lat: lat, lon: lon)
+        }
+    }
 
     func connect(lat: Double, lon: Double) {
         DispatchQueue.main.async {
             self.status = "Starting exploit..."
             self.isConnected = false
         }
+
+        UserDefaults.standard.set(lat, forKey: kLastLat)
+        UserDefaults.standard.set(lon, forKey: kLastLon)
+        UserDefaults.standard.set(true, forKey: kWasConnected)
 
         ds_set_log_callback { msg in
             guard let msg else { return }
@@ -47,6 +74,8 @@ final class KernelLocationManager: ObservableObject {
 
     func updateLocation(lat: Double, lon: Double) {
         guard isConnected else { return }
+        UserDefaults.standard.set(lat, forKey: kLastLat)
+        UserDefaults.standard.set(lon, forKey: kLastLon)
         DispatchQueue.global(qos: .userInitiated).async {
             self.writeLocation(lat: lat, lon: lon)
         }
@@ -55,6 +84,7 @@ final class KernelLocationManager: ObservableObject {
     func disconnect() {
         isConnected = false
         status = "Disconnected"
+        UserDefaults.standard.set(false, forKey: kWasConnected)
     }
 
     // MARK: - Private
@@ -79,7 +109,6 @@ final class KernelLocationManager: ObservableObject {
     private func patchLocationdInKernel(lat: Double, lon: Double) {
         guard ds_is_ready() else { return }
 
-        // Use the utility function — it uses the correct off_proc_* offsets internally
         let procPtr = proc_find_by_name("locationd")
         guard procPtr != 0 else { return }
 
@@ -87,14 +116,11 @@ final class KernelLocationManager: ObservableObject {
     }
 
     private func scanAndPatch(procPtr: UInt64, lat: Double, lon: Double) {
-        // Use utility helpers that already apply the correct kernel struct offsets
         let task  = proc_task(procPtr)
         guard task != 0 else { return }
         let vmMap = task_get_vm_map(task)
         guard vmMap != 0 else { return }
 
-        // vm_map circular linked list.
-        // Sentinel = address of the header's links node (hdr is the first field of vm_map).
         let hdr      = vmMap + UInt64(off_vm_map_hdr)
         var entry    = ds_kread64(hdr + UInt64(off_vm_map_header_links_next))
         let sentinel = hdr
@@ -102,18 +128,13 @@ final class KernelLocationManager: ObservableObject {
         for _ in 0..<2048 {
             guard entry != 0, entry != sentinel else { break }
 
-            // vm_map_links is always the first field of vm_map_entry:
-            //   +0x00 prev, +0x08 next, +0x10 start, +0x18 end
             let start = ds_kread64(entry + 0x10)
             let end   = ds_kread64(entry + 0x18)
             let size  = end &- start
 
-            // Protection bits live in the vme_alias word.
-            // cur_protection is bits [9:7] per XNU vm_map_entry bitfield layout.
             let flagsWord = ds_kread64(entry + UInt64(off_vm_map_entry_vme_alias))
             let curProt   = UInt8((flagsWord >> 7) & 0x7)
 
-            // Only scan readable+writable regions of sane size
             if curProt & 0x3 == 0x3, size >= 16, size <= 0x800_000 {
                 var addr = start
                 while addr &+ 16 <= end {
