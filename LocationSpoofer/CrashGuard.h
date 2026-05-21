@@ -8,20 +8,16 @@
 extern "C" {
 #endif
 
-// Wraps ds_run() with signal-based crash protection.
-// Returns:  0           on success
-//           positive    ds_run() returned an error code
-//           negative    signal was caught (e.g. -11 for SIGSEGV)
+// Wraps ds_run() with signal-based crash protection + file logging.
+// Returns:  0           success
+//           positive    ds_run() returned an error
+//           negative    signal caught (e.g. -11 = SIGSEGV)
 int ds_run_safe(void);
 
-// Signal number of the last caught crash, 0 if none.
-int ds_run_safe_last_signal(void);
-
-// Human-readable name for the last caught signal.
+int         ds_run_safe_last_signal(void);
 const char *ds_run_safe_signal_name(void);
 
 #ifdef __cplusplus
 }
 #endif
-
-#endif /* CrashGuard_h */
+#endif
