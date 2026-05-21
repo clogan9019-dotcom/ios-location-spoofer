@@ -1,6 +1,7 @@
 import Foundation
 import Combine
 import CoreLocation
+import Darwin
 
 final class KernelLocationManager: NSObject, ObservableObject {
     static let shared = KernelLocationManager()
@@ -30,6 +31,7 @@ final class KernelLocationManager: NSObject, ObservableObject {
     private var spoofLon: Double = 0
     private var spoofTimer: DispatchSourceTimer?
     private let spoofQueue = DispatchQueue(label: "com.locationspoofer.spoof", qos: .userInitiated)
+    private var didActivateSpoof = false   // tracks whether locationd was restarted into sim mode
 
     private override init() {
         super.init()
@@ -171,7 +173,6 @@ final class KernelLocationManager: NSObject, ObservableObject {
                 let sigName = String(cString: ds_run_safe_signal_name())
                 let err = "Exploit crashed — caught \(sigName)"
                 self.flog("CRASH: \(err)")
-                self.flog("CRASH: Check log file at \(filelog_path() != nil ? String(cString: filelog_path()) : "unknown")")
                 filelog_flush()
                 DispatchQueue.main.async {
                     self.isRunning = false; self.exploitError = err
@@ -217,9 +218,7 @@ final class KernelLocationManager: NSObject, ObservableObject {
                 completion?(false); return
             }
 
-            // Escape the app sandbox so we can write to locationd's preference path.
-            // sbx_escape() patches kernel sandbox extension structures for our process,
-            // granting read-write access to the full filesystem.
+            // Escape the app sandbox so we can write to protected paths.
             self.flog("Escaping sandbox...")
             DispatchQueue.main.async { self.status = "Escaping sandbox..." }
             sbx_setlogcallback { msg in
@@ -263,8 +262,8 @@ final class KernelLocationManager: NSObject, ObservableObject {
         if exploitReady {
             spoofLat = lat
             spoofLon = lon
-            spoofQueue.async { self.writeLocation(lat: lat, lon: lon) }
-            startSpoofTimer()
+            // Full activation: write plist then restart locationd
+            spoofQueue.async { self.activateSpoof(lat: lat, lon: lon) }
         } else {
             flog("connect: kernel not ready, running exploit first")
             runExploit { [weak self] success in
@@ -281,32 +280,43 @@ final class KernelLocationManager: NSObject, ObservableObject {
         flog(String(format: "applySpoof: %.5f, %.5f", lat, lon))
         spoofLat = lat
         spoofLon = lon
-        spoofQueue.async { self.writeLocation(lat: lat, lon: lon) }
-        startSpoofTimer()
+        spoofQueue.async { self.activateSpoof(lat: lat, lon: lon) }
     }
 
     func updateLocation(lat: Double, lon: Double) {
         guard isConnected else { return }
         UserDefaults.standard.set(lat, forKey: kLastLat)
         UserDefaults.standard.set(lon, forKey: kLastLon)
+        let changed = abs(lat - spoofLat) > 0.00001 || abs(lon - spoofLon) > 0.00001
         spoofLat = lat
         spoofLon = lon
-        spoofQueue.async { self.writeLocation(lat: lat, lon: lon) }
+        if changed {
+            // Location changed — update plist and restart locationd to apply
+            spoofQueue.async { self.activateSpoof(lat: lat, lon: lon) }
+        }
     }
 
     func disconnect() {
         flog("disconnect: clearing spoof")
         stopSpoofTimer()
+        didActivateSpoof = false
+
+        // Write a disabled simulation plist so locationd won't simulate on next start
+        writeSpoofPlist(lat: 0, lon: 0, enabled: false)
+
+        // Restart locationd so it picks up the disabled plist and reverts to real GPS
+        restartLocationd(reason: "disconnect — restoring real GPS")
+
         isConnected = false
         status = "Disconnected"
         UserDefaults.standard.set(false, forKey: kWasConnected)
+        filelog_flush()
     }
 
     // MARK: - Continuous spoof timer
 
-    // locationd gets real GPS updates from the hardware continuously.
-    // We fight back by re-writing the plist and notifying locationd every
-    // kSpoofInterval seconds so the fake coordinates always win.
+    // Timer re-writes the simulation plist every 3s to guard against it being
+    // overwritten or cleared by the system while spoofing is active.
     private let kSpoofInterval: Double = 3.0
 
     private func startSpoofTimer() {
@@ -317,7 +327,8 @@ final class KernelLocationManager: NSObject, ObservableObject {
                        leeway: .milliseconds(500))
         timer.setEventHandler { [weak self] in
             guard let self, self.isConnected else { return }
-            self.writeLocation(lat: self.spoofLat, lon: self.spoofLon, silent: true)
+            // Silently re-write plist to keep it fresh; don't restart locationd
+            self.writeSpoofPlist(lat: self.spoofLat, lon: self.spoofLon, enabled: true)
         }
         timer.resume()
         spoofTimer = timer
@@ -329,56 +340,30 @@ final class KernelLocationManager: NSObject, ObservableObject {
         spoofTimer = nil
     }
 
-    // MARK: - Private write
+    // MARK: - Core write + restart logic
 
-    private func writeLocation(lat: Double, lon: Double, silent: Bool = false) {
-        if !silent {
-            flog(String(format: "writeLocation: %.5f, %.5f", lat, lon))
+    /// Full activation: write simulation plist then kill locationd so it restarts
+    /// reading the new plist.  launchd auto-restarts locationd in ~2 seconds.
+    private func activateSpoof(lat: Double, lon: Double) {
+        flog(String(format: "activateSpoof: %.5f, %.5f", lat, lon))
+
+        let writeOk = writeSpoofPlist(lat: lat, lon: lon, enabled: true)
+        if !writeOk {
+            flog("activateSpoof: plist write failed — cannot proceed")
+            return
         }
 
-        let plistPath = "/private/var/mobile/Library/Preferences/com.apple.locationd.plist"
-        let plistData = locationPlistData(lat: lat, lon: lon)
+        // Kill locationd so launchd restarts it fresh, reading our plist.
+        // This is the only reliable way to make locationd enter simulation mode.
+        restartLocationd(reason: "activating spoof at \(String(format: "%.5f", lat)), \(String(format: "%.5f", lon))")
 
-        var writeOk = false
+        // Wait for locationd to finish restarting before starting the maintenance timer
+        flog("activateSpoof: waiting for locationd to restart...")
+        Thread.sleep(forTimeInterval: 3.0)
+        flog("activateSpoof: locationd should be back — spoof active")
 
-        // Primary: direct write — works after sbx_escape() removes sandbox.
-        do {
-            let dir = (plistPath as NSString).deletingLastPathComponent
-            try FileManager.default.createDirectory(atPath: dir,
-                withIntermediateDirectories: true, attributes: nil)
-            try plistData.write(to: URL(fileURLWithPath: plistPath),
-                                options: [.atomic])
-            writeOk = true
-            if !silent { flog("writeLocation: plist written ok (direct)") }
-        } catch {
-            if !silent { flog("writeLocation: direct write failed — \(error.localizedDescription)") }
-        }
-
-        // Fallback: write to a temp file in our sandbox, then use kernel VFS
-        // to overwrite the system plist.  vfs_overwritefile requires the
-        // destination to already exist, so we only use this if direct write
-        // succeeded at least once (meaning the file now exists).
-        if !writeOk && vfs_isready() {
-            let tmpPath = NSTemporaryDirectory() + "com.apple.locationd.plist.tmp"
-            do {
-                try plistData.write(to: URL(fileURLWithPath: tmpPath), options: [.atomic])
-                let vfsRet = vfs_overwritefile(plistPath, tmpPath)
-                writeOk = (vfsRet == 0)
-                if !silent {
-                    flog("writeLocation: vfs_overwritefile -> \(vfsRet == 0 ? "ok" : "failed (\(vfsRet))")")
-                }
-                try? FileManager.default.removeItem(atPath: tmpPath)
-            } catch {
-                if !silent { flog("writeLocation: vfs fallback failed — \(error.localizedDescription)") }
-            }
-        }
-
-        // Notify locationd to reload its preferences.
-        let rcRet = rc_locationd_reload_plist()
-        if rcRet != 0 { notify_locationd_direct() }
-        if !silent {
-            flog("writeLocation: locationd notify -> \(rcRet == 0 ? "ok (rc)" : "fallback (code \(rcRet))")")
-        }
+        didActivateSpoof = true
+        startSpoofTimer()
 
         DispatchQueue.main.async {
             self.isConnected = true
@@ -387,31 +372,72 @@ final class KernelLocationManager: NSObject, ObservableObject {
         filelog_flush()
     }
 
-    private func locationPlistData(lat: Double, lon: Double) -> Data {
+    /// Write the locationd simulation plist.
+    /// locationd reads this at startup; with SimulationEnabled=true it uses
+    /// SimulatedLatitude/SimulatedLongitude instead of real GPS.
+    @discardableResult
+    private func writeSpoofPlist(lat: Double, lon: Double, enabled: Bool) -> Bool {
+        let plistPath = "/private/var/mobile/Library/Preferences/com.apple.locationd.plist"
+
         let dict: NSDictionary = [
             "SimulatedLatitude":  lat,
             "SimulatedLongitude": lon,
-            "SimulationEnabled":  true
+            "SimulationEnabled":  enabled
         ]
-        var err: NSError?
-        let data = try? PropertyListSerialization.data(fromPropertyList: dict,
-                                                        format: .xml,
-                                                        options: 0)
-        if let data { return data }
-        _ = err
-        // Fallback: hand-rolled XML plist
-        let xml = """
-        <?xml version="1.0" encoding="UTF-8"?>
-        <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-        <plist version="1.0">
-        <dict>
-            <key>SimulatedLatitude</key><real>\(lat)</real>
-            <key>SimulatedLongitude</key><real>\(lon)</real>
-            <key>SimulationEnabled</key><true/>
-        </dict>
-        </plist>
-        """
-        return xml.data(using: .utf8)!
+        guard let data = try? PropertyListSerialization.data(
+            fromPropertyList: dict, format: .binary, options: 0) else {
+            flog("writeSpoofPlist: serialization failed")
+            return false
+        }
+
+        do {
+            let dir = (plistPath as NSString).deletingLastPathComponent
+            try FileManager.default.createDirectory(
+                atPath: dir, withIntermediateDirectories: true, attributes: nil)
+            try data.write(to: URL(fileURLWithPath: plistPath), options: [.atomic])
+            flog(String(format: "writeSpoofPlist: ok (enabled=\(enabled), %.5f, %.5f)", lat, lon))
+            return true
+        } catch {
+            flog("writeSpoofPlist: failed — \(error.localizedDescription)")
+            return false
+        }
+    }
+
+    /// Kill locationd by PID via the kernel proc struct.
+    /// launchd will auto-restart it within ~2 seconds.
+    private func restartLocationd(reason: String) {
+        flog("restartLocationd: \(reason)")
+
+        // Look up locationd's kernel proc structure
+        let locationdProc = procbyname("locationd")
+        guard locationdProc != 0 else {
+            flog("restartLocationd: procbyname('locationd') returned 0")
+            // Try fallback: killproc by name
+            let kr = killproc("locationd")
+            flog("restartLocationd: killproc('locationd') fallback = \(kr)")
+            return
+        }
+
+        // Read the PID from the proc struct (off_proc_p_pid is the uint32 offset)
+        let pid = pid_t(bitPattern: UInt32(ds_kread32(locationdProc + UInt64(off_proc_p_pid))))
+        flog("restartLocationd: locationd pid = \(pid)")
+
+        guard pid > 1 else {
+            flog("restartLocationd: invalid pid \(pid)")
+            return
+        }
+
+        // SIGKILL — launchd will restart locationd automatically
+        let ret = kill(pid, SIGKILL)
+        let err = errno
+        if ret == 0 {
+            flog("restartLocationd: kill(\(pid), SIGKILL) = ok")
+        } else {
+            flog("restartLocationd: kill(\(pid), SIGKILL) = \(ret) (errno \(err): \(String(cString: strerror(err))))")
+            // Fallback to killproc
+            let kr = killproc("locationd")
+            flog("restartLocationd: killproc fallback = \(kr)")
+        }
     }
 }
 
