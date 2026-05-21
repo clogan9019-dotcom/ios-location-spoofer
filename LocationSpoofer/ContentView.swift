@@ -13,6 +13,7 @@ struct ContentView: View {
     @State private var selectedPin: CLLocationCoordinate2D? = CLLocationCoordinate2D(latitude: 40.7128, longitude: -74.0060)
     @State private var searchText = ""
     @State private var showSuggestions = false
+    @State private var showAdvanced = false
 
     var body: some View {
         ZStack(alignment: .top) {
@@ -20,9 +21,21 @@ struct ContentView: View {
                 .ignoresSafeArea()
 
             VStack(spacing: 0) {
-                searchBar
-                    .padding(.top, 56)
-                    .padding(.horizontal, 16)
+                HStack(alignment: .center, spacing: 10) {
+                    searchBar
+                    Button {
+                        showAdvanced = true
+                    } label: {
+                        Image(systemName: "gearshape.fill")
+                            .font(.system(size: 18))
+                            .foregroundColor(.secondary)
+                            .padding(12)
+                            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 14))
+                            .shadow(color: .black.opacity(0.12), radius: 8, y: 4)
+                    }
+                }
+                .padding(.top, 56)
+                .padding(.horizontal, 16)
 
                 if showSuggestions && !locationSearch.results.isEmpty {
                     suggestionsDropdown
@@ -39,6 +52,10 @@ struct ContentView: View {
         .onChange(of: searchText) { newValue in
             locationSearch.search(query: newValue)
             showSuggestions = !newValue.isEmpty
+        }
+        .sheet(isPresented: $showAdvanced) {
+            AdvancedSettingsView()
+                .environmentObject(kernelManager)
         }
     }
 
@@ -169,6 +186,136 @@ struct ContentView: View {
     }
 }
 
+// MARK: - Advanced Settings Sheet
+
+struct AdvancedSettingsView: View {
+    @EnvironmentObject var kernelManager: KernelLocationManager
+    @Environment(\.dismiss) private var dismiss
+
+    @State private var customHex: String = ""
+    @State private var showError: Bool = false
+    @State private var errorMessage: String = ""
+
+    private let presets: [(label: String, chip: String, hex: String)] = [
+        ("A12 / A13",      "iPhone XS–11",        "0x19"),
+        ("A14 / A15",      "iPhone 12–13",         "0x19"),
+        ("A16+ / M-series","iPhone 14 Pro+ / iPad", "0x11"),
+        ("A17 Pro",        "iPhone 15 Pro",         "0x11"),
+    ]
+
+    var body: some View {
+        NavigationView {
+            List {
+                Section {
+                    HStack {
+                        Text("Current value")
+                            .foregroundColor(.secondary)
+                        Spacer()
+                        Text(kernelManager.t1szBootDisplay)
+                            .font(.system(.body, design: .monospaced))
+                            .foregroundColor(.primary)
+                            .multilineTextAlignment(.trailing)
+                    }
+                } header: {
+                    Text("t1sz_boot")
+                } footer: {
+                    Text("This value must match your device's chip. A wrong value causes the exploit to mis-sign kernel pointers and fail. Set it manually here if auto-detection produces incorrect results.")
+                        .font(.caption)
+                }
+
+                Section("Quick Presets") {
+                    ForEach(presets, id: \.hex) { preset in
+                        Button {
+                            applyPreset(preset.hex)
+                        } label: {
+                            HStack {
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(preset.label)
+                                        .foregroundColor(.primary)
+                                        .font(.system(size: 15, weight: .medium))
+                                    Text(preset.chip)
+                                        .foregroundColor(.secondary)
+                                        .font(.system(size: 12))
+                                }
+                                Spacer()
+                                Text(preset.hex)
+                                    .font(.system(.body, design: .monospaced))
+                                    .foregroundColor(.accentColor)
+                            }
+                        }
+                    }
+                }
+
+                Section("Custom Value") {
+                    HStack {
+                        Text("0x")
+                            .foregroundColor(.secondary)
+                            .font(.system(.body, design: .monospaced))
+                        TextField("e.g. 11 or 19", text: $customHex)
+                            .font(.system(.body, design: .monospaced))
+                            .autocorrectionDisabled()
+                            .textInputAutocapitalization(.never)
+                            .keyboardType(.asciiCapable)
+                    }
+                    if showError {
+                        Text(errorMessage)
+                            .font(.caption)
+                            .foregroundColor(.red)
+                    }
+                    Button("Apply Custom Value") {
+                        applyCustom()
+                    }
+                    .disabled(customHex.trimmingCharacters(in: .whitespaces).isEmpty)
+                }
+
+                Section {
+                    Button(role: .destructive) {
+                        kernelManager.clearT1szBootOverride()
+                        customHex = ""
+                        showError = false
+                    } label: {
+                        Label("Reset to Auto-Detect", systemImage: "arrow.counterclockwise")
+                    }
+                } footer: {
+                    Text("Auto-detect resolves the value from the kernelcache at exploit time. Use this if you're unsure which value to set.")
+                        .font(.caption)
+                }
+            }
+            .navigationTitle("Advanced Settings")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Done") { dismiss() }
+                }
+            }
+        }
+    }
+
+    private func applyPreset(_ hex: String) {
+        let success = kernelManager.setT1szBootOverride(hex)
+        if !success {
+            errorMessage = "Failed to apply preset."
+            showError = true
+        } else {
+            showError = false
+        }
+    }
+
+    private func applyCustom() {
+        let trimmed = customHex.trimmingCharacters(in: .whitespaces)
+        guard !trimmed.isEmpty else { return }
+        let success = kernelManager.setT1szBootOverride("0x\(trimmed)")
+        if success {
+            showError = false
+        } else {
+            errorMessage = "Invalid hex value. Enter digits like 11 or 19."
+            showError = true
+        }
+    }
+}
+
+// MARK: - Map
+
 struct MapView: UIViewRepresentable {
     @Binding var region: MKCoordinateRegion
     @Binding var selectedPin: CLLocationCoordinate2D?
@@ -222,6 +369,8 @@ struct MapView: UIViewRepresentable {
         }
     }
 }
+
+// MARK: - Search
 
 struct SearchResult: Identifiable {
     let id = UUID().uuidString
