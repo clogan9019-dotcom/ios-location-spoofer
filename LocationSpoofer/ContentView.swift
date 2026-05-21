@@ -296,11 +296,18 @@ struct LogsView: View {
     }
 }
 
-// MARK: - Tools (Location Spoofer)
+// MARK: - Tools
 
 struct ToolsView: View {
     @EnvironmentObject var kernelManager: KernelLocationManager
     @StateObject private var locationSearch = LocationSearchViewModel()
+
+    enum ToolMode: String, CaseIterable {
+        case spoofer = "Spoofer"
+        case scanner = "Scanner"
+    }
+
+    @State private var toolMode: ToolMode = .spoofer
 
     @State private var region = MKCoordinateRegion(
         center: CLLocationCoordinate2D(latitude: 40.7128, longitude: -74.0060),
@@ -313,14 +320,31 @@ struct ToolsView: View {
     var body: some View {
         NavigationView {
             ZStack {
-                if kernelManager.exploitReady {
-                    spooferView
-                } else {
-                    lockedView
+                switch toolMode {
+                case .spoofer:
+                    if kernelManager.exploitReady {
+                        spooferView
+                    } else {
+                        lockedView
+                    }
+                case .scanner:
+                    NetworkScannerView()
+                        .environmentObject(kernelManager)
                 }
             }
-            .navigationTitle("Location Spoofer")
+            .navigationTitle(toolMode == .spoofer ? "Location Spoofer" : "Network Scanner")
             .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .principal) {
+                    Picker("Tool", selection: $toolMode) {
+                        ForEach(ToolMode.allCases, id: \.self) { m in
+                            Text(m.rawValue).tag(m)
+                        }
+                    }
+                    .pickerStyle(.segmented)
+                    .frame(width: 210)
+                }
+            }
         }
     }
 
