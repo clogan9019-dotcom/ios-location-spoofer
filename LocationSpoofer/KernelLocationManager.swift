@@ -315,8 +315,8 @@ final class KernelLocationManager: NSObject, ObservableObject {
 
     // MARK: - Continuous spoof timer
 
-    // Timer re-writes the simulation plist every 3s to guard against it being
-    // overwritten or cleared by the system while spoofing is active.
+    // Timer re-writes the simulation plist every 3s and fires an RC reload to
+    // keep locationd continuously pointed at our fake coords.
     private let kSpoofInterval: Double = 3.0
 
     private func startSpoofTimer() {
@@ -327,8 +327,12 @@ final class KernelLocationManager: NSObject, ObservableObject {
                        leeway: .milliseconds(500))
         timer.setEventHandler { [weak self] in
             guard let self, self.isConnected else { return }
-            // Silently re-write plist to keep it fresh; don't restart locationd
             self.writeSpoofPlist(lat: self.spoofLat, lon: self.spoofLon, enabled: true)
+            // RC reload keeps the coords live without restarting locationd
+            let rcRet = rc_locationd_reload_plist()
+            if rcRet != 0 {
+                filelog("(spoofTimer) RC reload returned \(rcRet)")
+            }
         }
         timer.resume()
         spoofTimer = timer
@@ -340,10 +344,11 @@ final class KernelLocationManager: NSObject, ObservableObject {
         spoofTimer = nil
     }
 
-    // MARK: - Core write + restart logic
+    // MARK: - Core write + RC-reload / restart logic
 
-    /// Full activation: write simulation plist then kill locationd so it restarts
-    /// reading the new plist.  launchd auto-restarts locationd in ~2 seconds.
+    /// Full activation: write simulation plist, then try RC to reload it
+    /// instantly inside locationd.  If RC fails (e.g. first run), fall back
+    /// to SIGKILL so launchd restarts locationd with the new plist.
     private func activateSpoof(lat: Double, lon: Double) {
         flog(String(format: "activateSpoof: %.5f, %.5f", lat, lon))
 
@@ -353,14 +358,23 @@ final class KernelLocationManager: NSObject, ObservableObject {
             return
         }
 
-        // Kill locationd so launchd restarts it fresh, reading our plist.
-        // This is the only reliable way to make locationd enter simulation mode.
-        restartLocationd(reason: "activating spoof at \(String(format: "%.5f", lat)), \(String(format: "%.5f", lon))")
-
-        // Wait for locationd to finish restarting before starting the maintenance timer
-        flog("activateSpoof: waiting for locationd to restart...")
-        Thread.sleep(forTimeInterval: 3.0)
-        flog("activateSpoof: locationd should be back — spoof active")
+        // ── Try RC path first (instant, no restart) ──────────────────────
+        flog("activateSpoof: trying RC pref-reload inside locationd...")
+        let rcRet = rc_locationd_reload_plist()
+        if rcRet == 0 {
+            flog("activateSpoof: RC reload succeeded — no locationd restart needed")
+            if !didActivateSpoof {
+                // First activation — give locationd 0.5 s to process the reload
+                Thread.sleep(forTimeInterval: 0.5)
+            }
+        } else {
+            // ── RC failed — fall back to SIGKILL + wait ───────────────────
+            flog("activateSpoof: RC failed (\(rcRet)) — falling back to locationd restart")
+            restartLocationd(reason: "activating spoof at \(String(format: "%.5f", lat)), \(String(format: "%.5f", lon))")
+            flog("activateSpoof: waiting for locationd to restart...")
+            Thread.sleep(forTimeInterval: 3.0)
+            flog("activateSpoof: locationd should be back — spoof active")
+        }
 
         didActivateSpoof = true
         startSpoofTimer()
