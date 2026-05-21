@@ -6,15 +6,57 @@ final class KernelLocationManager: ObservableObject {
 
     @Published var isConnected: Bool = false
     @Published var status: String = "Disconnected"
+    @Published var t1szBootDisplay: String = "Auto"
 
-    private let kLastLat = "spoofer_last_lat"
-    private let kLastLon = "spoofer_last_lon"
+    private let kLastLat      = "spoofer_last_lat"
+    private let kLastLon      = "spoofer_last_lon"
     private let kWasConnected = "spoofer_was_connected"
+    private let kT1szOverride = "spoofer_t1sz_override"
+    private let kLaraT1sz     = "lara.t1sz_boot"
 
-    private init() {}
+    private init() {
+        loadT1szDisplay()
+    }
 
-    // Called on every foreground transition — re-applies location without
-    // re-running the full exploit when the kernel is still ready.
+    // MARK: - t1sz_boot override
+
+    private func loadT1szDisplay() {
+        let stored = UserDefaults.standard.object(forKey: kT1szOverride) as? UInt64 ?? 0
+        if stored != 0 {
+            t1szBootDisplay = String(format: "0x%02X (manual)", stored)
+        } else {
+            let lara = UserDefaults.standard.object(forKey: kLaraT1sz) as? UInt64 ?? 0
+            if lara != 0 {
+                t1szBootDisplay = String(format: "0x%02X (auto-detected)", lara)
+            } else {
+                t1szBootDisplay = "Auto (not yet resolved)"
+            }
+        }
+    }
+
+    /// Set a manual t1sz_boot override. Pass a hex string like "0x11" or "0x19".
+    /// Returns false if the string is not a valid hex number.
+    @discardableResult
+    func setT1szBootOverride(_ hexString: String) -> Bool {
+        let cleaned = hexString.trimmingCharacters(in: .whitespaces)
+            .replacingOccurrences(of: "0x", with: "", options: .caseInsensitive)
+        guard let value = UInt64(cleaned, radix: 16), value > 0 else { return false }
+        UserDefaults.standard.set(value, forKey: kT1szOverride)
+        UserDefaults.standard.set(value, forKey: kLaraT1sz)
+        UserDefaults.standard.synchronize()
+        t1szBootDisplay = String(format: "0x%02X (manual)", value)
+        return true
+    }
+
+    func clearT1szBootOverride() {
+        UserDefaults.standard.removeObject(forKey: kT1szOverride)
+        UserDefaults.standard.removeObject(forKey: kLaraT1sz)
+        UserDefaults.standard.synchronize()
+        t1szBootDisplay = "Auto (not yet resolved)"
+    }
+
+    // MARK: - Foreground restore
+
     func restoreIfNeeded() {
         guard UserDefaults.standard.bool(forKey: kWasConnected) else { return }
         let lat = UserDefaults.standard.double(forKey: kLastLat)
@@ -22,15 +64,15 @@ final class KernelLocationManager: ObservableObject {
         guard lat != 0 || lon != 0 else { return }
 
         if ds_is_ready() {
-            // Kernel still live — just re-patch without the expensive exploit step
             DispatchQueue.global(qos: .userInitiated).async {
                 self.writeLocation(lat: lat, lon: lon)
             }
         } else {
-            // Kernel lost — full reconnect
             connect(lat: lat, lon: lon)
         }
     }
+
+    // MARK: - Connect / Disconnect
 
     func connect(lat: Double, lon: Double) {
         DispatchQueue.main.async {
@@ -38,9 +80,15 @@ final class KernelLocationManager: ObservableObject {
             self.isConnected = false
         }
 
-        UserDefaults.standard.set(lat, forKey: kLastLat)
-        UserDefaults.standard.set(lon, forKey: kLastLon)
+        UserDefaults.standard.set(lat,  forKey: kLastLat)
+        UserDefaults.standard.set(lon,  forKey: kLastLon)
         UserDefaults.standard.set(true, forKey: kWasConnected)
+
+        // Apply any manual t1sz_boot override before the exploit initialises offsets
+        let override = UserDefaults.standard.object(forKey: kT1szOverride) as? UInt64 ?? 0
+        if override != 0 {
+            UserDefaults.standard.set(override, forKey: kLaraT1sz)
+        }
 
         ds_set_log_callback { msg in
             guard let msg else { return }
@@ -59,7 +107,10 @@ final class KernelLocationManager: ObservableObject {
                 return
             }
 
-            DispatchQueue.main.async { self.status = "Kernel R/W ready — initialising VFS..." }
+            DispatchQueue.main.async {
+                self.status = "Kernel R/W ready — initialising VFS..."
+                self.loadT1szDisplay()
+            }
 
             let vfsRet = vfs_init()
             guard vfsRet == 0 || vfs_isready() else {
@@ -90,16 +141,12 @@ final class KernelLocationManager: ObservableObject {
     // MARK: - Private
 
     private func writeLocation(lat: Double, lon: Double) {
-        // 1. VFS path — write simulated location plist that locationd respects
         var plist = locationPlist(lat: lat, lon: lon)
         let plistPath = "/private/var/mobile/Library/Preferences/com.apple.locationd.plist"
         plist.withUTF8 { ptr in
             _ = vfs_write(plistPath, ptr.baseAddress!, ptr.count, 0)
         }
-
-        // 2. Kernel direct path — scan locationd heap and overwrite coordinate pairs
         patchLocationdInKernel(lat: lat, lon: lon)
-
         DispatchQueue.main.async {
             self.isConnected = true
             self.status = String(format: "Spoofing %.5f, %.5f", lat, lon)
@@ -108,10 +155,8 @@ final class KernelLocationManager: ObservableObject {
 
     private func patchLocationdInKernel(lat: Double, lon: Double) {
         guard ds_is_ready() else { return }
-
         let procPtr = proc_find_by_name("locationd")
         guard procPtr != 0 else { return }
-
         scanAndPatch(procPtr: procPtr, lat: lat, lon: lon)
     }
 
@@ -153,8 +198,6 @@ final class KernelLocationManager: ObservableObject {
             entry = ds_kread64(entry + UInt64(off_vm_map_entry_links_next))
         }
     }
-
-    // MARK: - Helpers
 
     private func locationPlist(lat: Double, lon: Double) -> String {
         """
