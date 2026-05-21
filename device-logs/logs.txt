@@ -1,14 +1,13 @@
-[17:03:18] applySpoof: 40.71704, -74.00822
-[17:03:18] activateSpoof: 40.71704, -74.00822
-[17:03:18] writeSpoofPlist: ok (enabled=true, 40.71704, -74.00822)
-[17:03:18] activateSpoof: trying RC pref-reload inside locationd...
-[17:03:32] activateSpoof: RC failed (-1) — falling back to locationd restart
-[17:03:32] restartLocationd: activating spoof at 40.71704, -74.00822
-[17:03:32] restartLocationd: locationd pid = 1609
-[17:03:32] restartLocationd: kill(1609, SIGKILL) = -1 (errno 1) — falling back to launchctl
-[17:03:32] restartLocationd: using launchctl kickstart -k system/com.apple.locationd
-[17:03:32] restartLocationd: launchctl kickstart returned -1
-[17:03:32] activateSpoof: waiting for locationd to restart...
-[17:03:36] activateSpoof: locationd should be back — spoof active
-[17:03:36] spoofTimer: started (interval 3s)
-[17:03:39] writeSpoofPlist: ok (enabled=true, 40.71704, -74.00822)
+[17:14:15] ========== SESSION START ==========
+[17:14:15] Device : iPhone17,5
+[17:14:15] iOS    : 18.7.1
+[17:14:15] Kernel : 24.6.0
+[17:14:15] Log    : /private/var/mobile/Documents/LocationSpooferLogs/logs.txt
+[17:14:15] ===================================
+[17:14:15] --- Device Info ---
+[17:14:15] Model     : iPhone
+[17:14:15] iOS       : 18.7.1
+[17:14:15] Name      : iPhone
+[17:14:15] t1sz cfg  : Auto (not yet resolved)
+[17:14:15] Log file  : 
+[17:14:15] -------------------
