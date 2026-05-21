@@ -18,6 +18,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Set build time
+        run: echo "BUILD_TIME=$(date -u '+%B %d, %Y at %I:%M %p UTC')" >> $GITHUB_ENV
+
       - name: Fetch ChOma headers
         run: |
           git clone --depth=1 https://github.com/opa334/ChOma.git /tmp/ChOma
@@ -81,6 +84,8 @@ jobs:
           files: ${{ runner.temp }}/LocationSpoofer.ipa
           body: |
             Rolling build from the latest commit on `main`.
+
+            Built: ${{ env.BUILD_TIME }}
 
             Unsigned IPA — sideload with Sideloadly, AltStore, or TrollStore.
 
