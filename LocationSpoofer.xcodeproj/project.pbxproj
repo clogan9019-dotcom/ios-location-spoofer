@@ -73,8 +73,8 @@ BB0000000000000000000034 /* thread.m */ = {isa = PBXFileReference; lastKnownFile
 BB000000000000000000034H /* thread.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = thread.h; sourceTree = "<group>"; };
 BB0000000000000000000035 /* findcachedataoff.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = findcachedataoff.m; sourceTree = "<group>"; };
 BB000000000000000000035H /* privateapi.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = privateapi.h; sourceTree = "<group>"; };
-BB0000000000000000000040 /* libgrabkernel2.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libgrabkernel2.dylib; path = lib/libgrabkernel2.dylib; sourceTree = "<group>"; };
-BB0000000000000000000041 /* libxpf.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libxpf.dylib; path = lib/libxpf.dylib; sourceTree = "<group>"; };
+BB0000000000000000000040 /* libgrabkernel2.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libgrabkernel2.dylib; path = libgrabkernel2.dylib; sourceTree = "<group>"; };
+BB0000000000000000000041 /* libxpf.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libxpf.dylib; path = libxpf.dylib; sourceTree = "<group>"; };
 BB000000000000000000050H /* libgrabkernel2.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = libgrabkernel2.h; sourceTree = "<group>"; };
 BB000000000000000000051H /* xpf.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = xpf.h; sourceTree = "<group>"; };
 BB000000000000000000052H /* fileport.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = fileport.h; sourceTree = "<group>"; };
