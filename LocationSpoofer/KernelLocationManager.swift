@@ -32,7 +32,7 @@ final class KernelLocationManager: NSObject, ObservableObject {
     private let spoofQueue = DispatchQueue(label: "com.locationspoofer.spoof", qos: .userInitiated)
     private var didActivateSpoof = false
     private var lastTimerRestart: Date = .distantPast
-    private let kTimerRestartInterval: Double = 15.0
+    private let kTimerRestartInterval: Double = 5.0
     private var timerTickCount = 0
 
     private override init() {
