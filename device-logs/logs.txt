@@ -1,5 +1,1 @@
-[21:13:38] applySpoof: 40.71121, -74.00459
-[21:13:38] activateSpoof: 40.71121, -74.00459
-[21:13:38] writeSpoofPlist: wrote 166 bytes to /private/var/mobile/Library/Preferences/com.apple.locationd.plist (enabled=YES, lat=40.711213, lon=-74.004590)
-[21:13:38] activateSpoof: trying RC pref-reload inside locationd (attempt #1)
-[21:13:38] [rc] rc_locationd_reload_plist: trying RemoteCall bypass=YES
+[21:13:45] [rc] RemoteCall bypass=YES FAILED: RemoteCall init failed — trying bypass=NO
