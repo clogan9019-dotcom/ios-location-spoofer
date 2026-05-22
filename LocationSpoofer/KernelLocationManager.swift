@@ -461,45 +461,39 @@ final class KernelLocationManager: NSObject, ObservableObject {
     }
 
     /// Restart locationd so launchd respawns it with the updated simulation plist.
-    /// 1. Try kernel-read PID + userspace kill() — fast, works if we have permission.
-    /// 2. If kill() fails (EPERM running as mobile), use launchctl kickstart -k.
+    /// Uses kernel-level killproc() which bypasses userspace EPERM entirely.
     private func restartLocationd(reason: String) {
         flog("restartLocationd: \(reason)")
 
+        // killproc() walks the kernel proc list and sends the signal via kernel r/w,
+        // bypassing the userspace credential check that causes EPERM from kill().
+        flog("restartLocationd: calling killproc("locationd") via kernel r/w")
+        let kret = killproc("locationd")
+        if kret == 0 {
+            flog("restartLocationd: killproc() succeeded — launchd will respawn locationd")
+            return
+        }
+        flog("restartLocationd: killproc() returned \(kret) — trying userspace kill fallback")
+
+        // Fallback 1: userspace kill() with kernel-read PID.
         let locationdProc = procbyname("locationd")
-        guard locationdProc != 0 else {
-            flog("restartLocationd: procbyname('locationd') returned 0 — trying launchctl")
-            launchctlKickstartLocationd()
-            return
-        }
-
-        let pid = pid_t(bitPattern: UInt32(ds_kread32(locationdProc + UInt64(off_proc_p_pid))))
-        flog("restartLocationd: locationd pid = \(pid)")
-
-        guard pid > 1 else {
-            flog("restartLocationd: invalid pid \(pid) — trying launchctl")
-            launchctlKickstartLocationd()
-            return
-        }
-
-        let ret = kill(pid, SIGKILL)
-        if ret == 0 {
-            flog("restartLocationd: kill(\(pid), SIGKILL) = ok — launchd will restart locationd")
+        if locationdProc != 0 {
+            let pid = pid_t(bitPattern: UInt32(ds_kread32(locationdProc + UInt64(off_proc_p_pid))))
+            flog("restartLocationd: userspace kill(\(pid), SIGKILL)")
+            let ret = kill(pid, SIGKILL)
+            if ret == 0 {
+                flog("restartLocationd: kill() succeeded")
+                return
+            }
+            flog("restartLocationd: kill() = \(ret) errno=\(errno)")
         } else {
-            let err = errno
-            flog("restartLocationd: kill(\(pid), SIGKILL) = \(ret) (errno \(err)) — falling back to launchctl")
-            launchctlKickstartLocationd()
+            flog("restartLocationd: procbyname returned 0")
         }
-    }
 
-    private func launchctlKickstartLocationd() {
-        flog("restartLocationd: using launchctl kickstart -k system/com.apple.locationd")
-        let ret = restart_locationd_via_launchctl()
-        if ret == 0 {
-            flog("restartLocationd: launchctl kickstart succeeded")
-        } else {
-            flog("restartLocationd: launchctl kickstart returned \(ret)")
-        }
+        // Fallback 2: launchctl kickstart.
+        flog("restartLocationd: trying launchctl kickstart -k system/com.apple.locationd")
+        let lcret = restart_locationd_via_launchctl()
+        flog("restartLocationd: launchctl returned \(lcret)")
     }
 }
 
