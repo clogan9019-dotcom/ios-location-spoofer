@@ -1,9 +1,1 @@
-[09:02:43] [tick 1] spoofTimer fired — writing plist lat=40.706548 lon=-73.999376
-[09:02:43] writeSpoofPlist: wrote 166 bytes to /private/var/mobile/Library/Preferences/com.apple.locationd.plist (enabled=YES, lat=40.706548, lon=-73.999376)
-[09:02:43] [tick 1] writeSpoofPlist = OK
-[09:02:43] writeSpoofViaCFPrefs: CFPreferencesSynchronize=OK, enabled=YES, lat=40.706548, lon=-73.999376
-[09:02:43] [rc-preflight] proc=0xffffffe92cb44248 task=0xffffffe92cb44988 firstThread=0xffffffeaf90992a0
-[09:02:43] [rc-preflight] excGuard[0x624]=0x00ffc00000000099 off_task_threads_next=0x50 off_task_task_exc_guard=0x624
-[09:02:43] [rc-preflight] thread chain: t0=0xffffffeaf90992a0 t1=0xffffffeaf90f61c0 t2=0xffffffeaf9399a30
-[09:02:43] [rc-preflight] t0 tro=0xffffffe847e25a88 tro->task=0xffffffe92cb44988 (expected task=0xffffffe92cb44988, match=1)
-[09:02:43] [rc] rc_locationd_reload_plist: trying RemoteCall bypass=YES
+[09:02:51] [rc] RemoteCall bypass=YES FAILED: RC-step-15: probePid=0 (first RC call failed) — trying bypass=NO
