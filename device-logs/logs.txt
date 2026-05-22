@@ -1,11 +1,10 @@
-[20:47:19] activateSpoof: rc_locationd_reload_plist() = -1 (FAIL)
-[20:47:19] activateSpoof: RC failed (-1) — falling back to locationd restart
-[20:47:19] activateSpoof: locationd PID before restart = 1979
-[20:47:19] restartLocationd: activating spoof at 40.702045, -74.000786
-[20:47:19] restartLocationd: locationd pid = 1979
-[20:47:19] restartLocationd: kill(1979, SIGKILL) = -1 (errno 1) — falling back to launchctl
-[20:47:19] restartLocationd: using launchctl kickstart -k system/com.apple.locationd
-[20:47:19] restartLocationd: launchctl kickstart returned -1
-[20:47:19] activateSpoof: waiting 3s for locationd to restart...
-[20:47:22] activateSpoof: locationd PID after restart  = 1979 (SAME — restart may have failed)
-[20:47:22] spoofTimer: started (interval 3s)
+[20:47:25] [tick 1] spoofTimer fired — writing plist lat=40.702045 lon=-74.000786
+[20:47:25] writeSpoofPlist: wrote 166 bytes to /private/var/mobile/Library/Preferences/com.apple.locationd.plist (enabled=YES, lat=40.702045, lon=-74.000786)
+[20:47:25] [tick 1] writeSpoofPlist = OK
+[20:47:28] disconnect: clearing spoof
+[20:47:28] writeSpoofPlist: wrote 156 bytes to /private/var/mobile/Library/Preferences/com.apple.locationd.plist (enabled=NO, lat=0.000000, lon=0.000000)
+[20:47:28] restartLocationd: disconnect — restoring real GPS
+[20:47:28] restartLocationd: locationd pid = 1979
+[20:47:28] restartLocationd: kill(1979, SIGKILL) = -1 (errno 1) — falling back to launchctl
+[20:47:28] restartLocationd: using launchctl kickstart -k system/com.apple.locationd
+[20:47:28] restartLocationd: launchctl kickstart returned -1
