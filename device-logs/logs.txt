@@ -1,10 +1,2 @@
-[20:47:25] [tick 1] spoofTimer fired — writing plist lat=40.702045 lon=-74.000786
-[20:47:25] writeSpoofPlist: wrote 166 bytes to /private/var/mobile/Library/Preferences/com.apple.locationd.plist (enabled=YES, lat=40.702045, lon=-74.000786)
-[20:47:25] [tick 1] writeSpoofPlist = OK
-[20:47:28] disconnect: clearing spoof
-[20:47:28] writeSpoofPlist: wrote 156 bytes to /private/var/mobile/Library/Preferences/com.apple.locationd.plist (enabled=NO, lat=0.000000, lon=0.000000)
-[20:47:28] restartLocationd: disconnect — restoring real GPS
-[20:47:28] restartLocationd: locationd pid = 1979
-[20:47:28] restartLocationd: kill(1979, SIGKILL) = -1 (errno 1) — falling back to launchctl
-[20:47:28] restartLocationd: using launchctl kickstart -k system/com.apple.locationd
-[20:47:28] restartLocationd: launchctl kickstart returned -1
+[20:47:41] [tick 1] rc_locationd_reload_plist = -1 (FAIL)
+[20:47:41] [tick 1] notify_locationd_direct = 0 (ok)
