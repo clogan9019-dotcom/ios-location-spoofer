@@ -1,2 +1,110 @@
-[20:47:41] [tick 1] rc_locationd_reload_plist = -1 (FAIL)
-[20:47:41] [tick 1] notify_locationd_direct = 0 (ok)
+[20:53:41] ========== SESSION START ==========
+[20:53:41] Device : iPhone17,5
+[20:53:41] iOS    : 18.7.1
+[20:53:41] Kernel : 24.6.0
+[20:53:41] Log    : /private/var/mobile/Documents/LocationSpooferLogs/logs.txt
+[20:53:41] ===================================
+[20:53:41] --- Device Info ---
+[20:53:41] Model     : iPhone
+[20:53:41] iOS       : 18.7.1
+[20:53:41] Name      : iPhone
+[20:53:41] t1sz cfg  : Auto (not yet resolved)
+[20:53:41] Log file  : 
+[20:53:41] -------------------
+[20:53:44] ========== SESSION START ==========
+[20:53:44] Device : iPhone17,5
+[20:53:44] iOS    : 18.7.1
+[20:53:44] Kernel : 24.6.0
+[20:53:44] Log    : /private/var/mobile/Documents/LocationSpooferLogs/logs.txt
+[20:53:44] ===================================
+[20:53:44] Log cleared by user
+[20:53:44] runExploit: using auto t1sz_boot
+[20:53:44] runExploit: setting log/progress callbacks
+[20:53:44] runExploit: calling ds_run_safe()...
+[20:53:44] CrashGuard: installing signal handlers
+[20:53:44] CrashGuard: calling ds_run()...
+[20:53:44] [ds_run] progress: 0.0%
+[20:53:44] [ds_run] starting darksword
+[20:53:44] [ds_run] progress: 10.0%
+[20:53:44] [ds_run] device: iPhone17,5
+[20:53:44] [ds_run] ispac: yes
+[20:53:44] [ds_run] running on a18 device
+[20:53:52] [ds_run] read_fd: 0x3
+[20:53:52] [ds_run] write_fd: 0x4
+[20:53:52] [ds_run] executable_path:       /private/var/containers/Bundle/Application/5711065A-FB6C-46D0-840F-A2B8234E2B83/LocationSpoofer.app/LocationSpoofer
+[20:53:52] [ds_run] host_executable_path:  /private/var/containers/Bundle/Application/5711065A-FB6C-46D0-840F-A2B8234E2B83/LocationSpoofer.app/LocationSpoofer
+[20:53:52] [ds_run] guest_executable_name: LocationSpoofer
+[20:53:52] [ds_run] host_executable_name:  LocationSpoofer
+[20:53:52] [ds_run] kernel_process_name:   LocationSpoofer
+[20:53:52] [ds_run] livecontainer_bundle:  no
+[20:53:52] [ds_run] livecontainer_guest:   no
+[20:53:52] [ds_run] rehosted_process:      no
+[20:53:52] [ds_run] process_marker 0: LocationSpoofer
+[20:53:52] [ds_run] executable_name: LocationSpoofer
+[20:53:52] [ds_run] free_thread_arg: 0x115068000
+[20:53:52] [ds_run] progress: 30.0%
+[20:53:52] [ds_run] physical_mapping_address: 0x105f14000
+[20:53:52] [ds_run] pc_object: 0x5c07
+[20:53:52] [ds_run] pc_address: 0x3f89e0000
+[20:53:52] [ds_run] allocating wired memory (131072 entries)...
+[20:53:53] [ds_run] allocating wired memory done
+[20:53:53] [ds_run] progress: 51.0%
+[20:53:53] [ds_run] seeking_offset: 0xb0000: found wired_page: 0x162864000
+[20:53:53] [ds_run] progress: 59.1%
+[20:53:53] [ds_run] seeking_offset: 0x58000: found wired_page: 0x170d88000
+[20:53:53] [ds_run] progress: 59.1%
+[20:53:53] [ds_run] seeking_offset: 0x28000: found wired_page: 0x119694000
+[20:53:53] [ds_run] progress: 59.1%
+[20:53:53] [ds_run] seeking_offset: 0x0: found wired_page: 0x30851c000
+[20:53:53] [ds_run] progress: 59.1%
+[20:53:53] [ds_run] seeking_offset: 0x4c000: found wired_page: 0x30a664000
+[20:53:53] [ds_run] progress: 59.1%
+[20:53:54] [ds_run] matched PCB via process marker: LocationSpoofer
+[20:53:54] [ds_run] pcb_start_offset: 0x0
+[20:53:54] [ds_run] target_inp_gencnt: 0x3421d2
+[20:53:54] [ds_run] inp_list_next_pointer: 0xffffffe08e78c400
+[20:53:54] [ds_run] icmp6filter: 0xffffffe46f8a9ee0
+[20:53:54] [ds_run] corrupting icmp6filter pointer...
+[20:53:54] [ds_run] target corrupted: 0xffffffe08e78c548
+[20:53:54] [ds_run] found control_socket at idx: 0x330f
+[20:53:54] [ds_run] seeking_offset: 0x58000: found PCB page
+[20:53:54] [ds_run] progress: 70.0%
+[20:53:54] [ds_run] highest_success_idx: 468
+[20:53:54] [ds_run] success_read_count: 34
+[20:53:54] [ds_run] progress: 80.0%
+[20:53:54] [ds_run] walking kernel structures...
+[20:53:54] [ds_run] control_socket_pcb: 0xffffffe08e78c000
+[20:53:54] [ds_run] pcbinfo_pointer: 0xfffffff04616e790
+[20:53:54] [ds_run] ipi_zone: 0xfffffff042ee4f20
+[20:53:54] [ds_run] zv_name: 0xfffffff042332513
+[20:53:54] [ds_run] searching for kernel mach-o header from 0xfffffff042330000...
+[20:53:54] [ds_run] candidate mach-o at 0xfffffff0422c0000: filetype=2 cpuinfo=0x2c0000002 (iter=28)
+[20:53:54] [ds_run] candidate mach-o at 0xfffffff0422b8000: filetype=12 cpuinfo=0xc00000002 (iter=30)
+[20:53:54] [ds_run] found mh_fileset header at 0xfffffff0422b8000
+[20:53:54] [ds_run] t1sz_boot: 0x11
+[20:53:54] [ds_run] kernel_base:  0xfffffff0422b8000
+[20:53:54] [ds_run] kernel_slide: 0x3b2b4000
+[20:53:54] [ds_run] progress: 99.0%
+[20:53:54] [ds_run] iOS 18: using so_count offset 0x254
+[20:53:54] [ds_run] kernel r/w is ready!
+[20:53:54] [ds_run] progress: 99.0%
+[20:53:54] [ds_run] our_proc: 0xffffffe25519de38
+[20:53:54] [ds_run] our_task: 0xffffffe25519e578
+[20:53:54] CrashGuard: ds_run() returned 0
+[20:53:54] runExploit: ds_run_safe() returned 0, ds_is_ready=YES, resolved_t1sz=0x00
+[20:53:54] Kernel R/W acquired — initialising VFS...
+[20:53:54] vfs_init() = 0, vfs_isready() = true
+[20:53:54] Escaping sandbox...
+[20:53:54] [sbx] proc=0xffffffe25519de38 proc_ro_raw=0xffffffdf5801e680 proc_ro=0xffffffdf5801e680
+[20:53:54] [sbx] scanning proc_ro for ucred...
+[20:53:54] [sbx]   proc_ro+0x10: raw=0x7c8 smr=0x7c8 pac=0x7c8
+[20:53:54] [sbx]   proc_ro+0x18: raw=0x100001461 smr=0x100001461 pac=0x100001461
+[20:53:54] [sbx]   proc_ro+0x20: raw=0x2200230100000001 smr=0x230100000001 pac=0x230100000001
+[20:53:54] [sbx]   proc_ro+0x28: raw=0xffffffdfa5fc4730 smr=0xffffffdfa5fc4730 pac=0xffffffdfa5fc4730
+[20:53:54] [sbx] found ucred at proc_ro+0x28 (SMR) = 0xffffffdfa5fc4730
+[20:53:54] [sbx] ucred=0xffffffdfa5fc4730 label=0xffffffdfa5e20020 sandbox=0xffffffdfa5e58e80 ext_set=0xffffffe172d8c940
+[20:53:54] [sbx] patched 5 extensions
+[20:53:54] [sbx] filled 11 empty hash slots
+[20:53:54] [sbx] escaped!
+[20:53:54] sbx_escape() = ok — sandbox removed
+[20:53:54] All systems ready — exploit complete
