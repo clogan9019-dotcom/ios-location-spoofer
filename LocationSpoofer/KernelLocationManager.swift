@@ -33,6 +33,7 @@ final class KernelLocationManager: NSObject, ObservableObject {
     private var didActivateSpoof = false
     private var lastTimerRestart: Date = .distantPast
     private let kTimerRestartInterval: Double = 15.0
+    private var timerTickCount = 0
 
     private override init() {
         super.init()
@@ -189,7 +190,9 @@ final class KernelLocationManager: NSObject, ObservableObject {
                 completion?(false); return
             }
 
-            self.flog("runExploit: ds_run_safe() returned \(ret), ds_is_ready=\(ds_is_ready())")
+            let resolvedT1sz = UserDefaults.standard.object(forKey: "lara.t1sz_boot") as? UInt64 ?? 0
+            self.flog(String(format: "runExploit: ds_run_safe() returned %d, ds_is_ready=%@, resolved_t1sz=0x%02X",
+                             ret, ds_is_ready() ? "YES" : "NO", resolvedT1sz))
 
             guard ret == 0, ds_is_ready() else {
                 let err = "Exploit failed (code \(ret))"
@@ -330,27 +333,43 @@ final class KernelLocationManager: NSObject, ObservableObject {
                        leeway: .milliseconds(500))
         timer.setEventHandler { [weak self] in
             guard let self, self.isConnected else { return }
-            self.writeSpoofPlist(lat: self.spoofLat, lon: self.spoofLon, enabled: true)
+            self.timerTickCount += 1
+            let tick = self.timerTickCount
+            filelog(String(format: "[tick %d] spoofTimer fired — writing plist lat=%.6f lon=%.6f",
+                           tick, self.spoofLat, self.spoofLon))
+
+            let writeOk = self.writeSpoofPlist(lat: self.spoofLat, lon: self.spoofLon, enabled: true)
+            filelog(String(format: "[tick %d] writeSpoofPlist = %@", tick, writeOk ? "OK" : "FAILED"))
+            guard writeOk else { return }
+
             let rcRet = rc_locationd_reload_plist()
-            if rcRet == 0 {
-                // RC succeeded — locationd has our fake coords in memory, nothing more needed.
-                return
-            }
-            filelog(String(format: "(spoofTimer) RC reload failed (%d) — trying direct notify", rcRet))
+            filelog(String(format: "[tick %d] rc_locationd_reload_plist = %d (%@)",
+                           tick, rcRet, rcRet == 0 ? "SUCCESS" : "FAIL"))
+            if rcRet == 0 { return }
+
             let notifyRet = notify_locationd_direct()
-            if notifyRet == 0 {
-                return
-            }
-            // Both methods failed. locationd will fall back to real GPS unless we restart it.
-            // Rate-limit restarts to at most once every kTimerRestartInterval seconds.
+            filelog(String(format: "[tick %d] notify_locationd_direct = %d (%@)",
+                           tick, notifyRet, notifyRet == 0 ? "ok" : "failed"))
+            if notifyRet == 0 { return }
+
+            // Both failed — restart locationd (rate-limited).
             let now = Date()
-            guard now.timeIntervalSince(self.lastTimerRestart) > self.kTimerRestartInterval else {
-                filelog("(spoofTimer) RC+notify failed — restart suppressed (cooldown)")
+            let elapsed = now.timeIntervalSince(self.lastTimerRestart)
+            guard elapsed > self.kTimerRestartInterval else {
+                filelog(String(format: "[tick %d] RC+notify failed — restart cooldown (%.0fs remaining)",
+                               tick, self.kTimerRestartInterval - elapsed))
                 return
             }
             self.lastTimerRestart = now
-            filelog("(spoofTimer) RC+notify both failed — restarting locationd to re-assert spoof")
-            self.restartLocationd(reason: "spoof timer: RC and notify both failed")
+            let preProc = procbyname("locationd")
+            let prePid  = preProc != 0 ? pid_t(bitPattern: UInt32(ds_kread32(preProc + UInt64(off_proc_p_pid)))) : 0
+            filelog(String(format: "[tick %d] restarting locationd (PID %d) — RC+notify both failed", tick, prePid))
+            self.restartLocationd(reason: "spoof timer tick \(tick): RC=\(rcRet) notify=\(notifyRet)")
+            Thread.sleep(forTimeInterval: 3.0)
+            let postProc = procbyname("locationd")
+            let postPid  = postProc != 0 ? pid_t(bitPattern: UInt32(ds_kread32(postProc + UInt64(off_proc_p_pid)))) : 0
+            filelog(String(format: "[tick %d] locationd after restart: PID %d (%@)",
+                           tick, postPid, postPid != prePid ? "new process ✓" : "SAME — restart may have failed"))
         }
         timer.resume()
         spoofTimer = timer
@@ -374,19 +393,27 @@ final class KernelLocationManager: NSObject, ObservableObject {
             return
         }
 
-        flog("activateSpoof: trying RC pref-reload inside locationd...")
+        flog("activateSpoof: trying RC pref-reload inside locationd (attempt #\(timerTickCount + 1))")
         let rcRet = rc_locationd_reload_plist()
+        flog(String(format: "activateSpoof: rc_locationd_reload_plist() = %d (%@)",
+                    rcRet, rcRet == 0 ? "SUCCESS" : "FAIL"))
         if rcRet == 0 {
-            flog("activateSpoof: RC reload succeeded — no locationd restart needed")
+            flog("activateSpoof: RC reload succeeded — locationd has new coords in memory, no restart needed")
             if !didActivateSpoof {
                 Thread.sleep(forTimeInterval: 0.5)
             }
         } else {
             flog("activateSpoof: RC failed (\(rcRet)) — falling back to locationd restart")
-            restartLocationd(reason: "activating spoof at \(String(format: "%.5f", lat)), \(String(format: "%.5f", lon))")
-            flog("activateSpoof: waiting for locationd to restart...")
+            // Log locationd PID before restart so we can confirm it changes.
+            let preProc = procbyname("locationd")
+            let prePid  = preProc != 0 ? pid_t(bitPattern: UInt32(ds_kread32(preProc + UInt64(off_proc_p_pid)))) : 0
+            flog("activateSpoof: locationd PID before restart = \(prePid)")
+            restartLocationd(reason: "activating spoof at \(String(format: "%.6f", lat)), \(String(format: "%.6f", lon))")
+            flog("activateSpoof: waiting 3s for locationd to restart...")
             Thread.sleep(forTimeInterval: 3.0)
-            flog("activateSpoof: locationd should be back — spoof active")
+            let postProc = procbyname("locationd")
+            let postPid  = postProc != 0 ? pid_t(bitPattern: UInt32(ds_kread32(postProc + UInt64(off_proc_p_pid)))) : 0
+            flog("activateSpoof: locationd PID after restart  = \(postPid) (\(postPid != prePid ? "NEW process ✓" : "SAME — restart may have failed"))")
         }
 
         didActivateSpoof = true
@@ -422,10 +449,13 @@ final class KernelLocationManager: NSObject, ObservableObject {
             try FileManager.default.createDirectory(
                 atPath: dir, withIntermediateDirectories: true, attributes: nil)
             try data.write(to: URL(fileURLWithPath: plistPath), options: [.atomic])
-            flog(String(format: "writeSpoofPlist: ok (enabled=\(enabled), %.5f, %.5f)", lat, lon))
+            // Verify the write landed on disk — read back and check size.
+            let onDiskSize = (try? FileManager.default.attributesOfItem(atPath: plistPath)[.size] as? Int) ?? -1
+            flog(String(format: "writeSpoofPlist: wrote %d bytes to %@ (enabled=%@, lat=%.6f, lon=%.6f)",
+                        onDiskSize, plistPath, enabled ? "YES" : "NO", lat, lon))
             return true
         } catch {
-            flog("writeSpoofPlist: failed — \(error.localizedDescription)")
+            flog("writeSpoofPlist: FAILED — \(error.localizedDescription) — path=\(plistPath)")
             return false
         }
     }
