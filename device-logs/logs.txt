@@ -1,5 +1,7 @@
-[21:13:58] [tick 1] spoofTimer fired — writing plist lat=40.711213 lon=-74.004590
-[21:13:58] writeSpoofPlist: wrote 166 bytes to /private/var/mobile/Library/Preferences/com.apple.locationd.plist (enabled=YES, lat=40.711213, lon=-74.004590)
-[21:13:58] [tick 1] writeSpoofPlist = OK
-[21:13:58] [rc] rc_locationd_reload_plist: trying RemoteCall bypass=YES
-[21:14:05] [rc] RemoteCall bypass=YES FAILED: RemoteCall init failed — trying bypass=NO
+[21:14:13] [rc] RemoteCall FAILED BOTH MODES: RemoteCall init failed — RC unavailable
+[21:14:13] [tick 1] rc_locationd_reload_plist = -1 (FAIL)
+[21:14:13] [tick 1] notify_locationd_direct = 0 (ok)
+[21:14:13] [tick 2] spoofTimer fired — writing plist lat=40.711213 lon=-74.004590
+[21:14:13] writeSpoofPlist: wrote 166 bytes to /private/var/mobile/Library/Preferences/com.apple.locationd.plist (enabled=YES, lat=40.711213, lon=-74.004590)
+[21:14:13] [tick 2] writeSpoofPlist = OK
+[21:14:13] [rc] rc_locationd_reload_plist: trying RemoteCall bypass=YES
