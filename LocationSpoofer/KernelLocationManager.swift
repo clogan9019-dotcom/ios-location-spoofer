@@ -467,13 +467,13 @@ final class KernelLocationManager: NSObject, ObservableObject {
 
         // killproc() walks the kernel proc list and sends the signal via kernel r/w,
         // bypassing the userspace credential check that causes EPERM from kill().
-        flog("restartLocationd: calling killproc(locationd) via kernel r/w")
-        let kret = killproc("locationd")
+        flog("restartLocationd: calling crashproc(locationd) via kernel r/w")
+        let kret = crashproc("locationd")
         if kret == 0 {
-            flog("restartLocationd: killproc() succeeded — launchd will respawn locationd")
+            flog("restartLocationd: crashproc() succeeded — launchd will respawn locationd")
             return
         }
-        flog("restartLocationd: killproc() returned \(kret) — trying userspace kill fallback")
+        flog("restartLocationd: crashproc() returned \(kret) — trying userspace kill fallback")
 
         // Fallback 1: userspace kill() with kernel-read PID.
         let locationdProc = procbyname("locationd")
