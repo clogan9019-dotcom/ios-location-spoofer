@@ -1,5 +1,1 @@
-[09:16:01] disconnect: clearing spoof
-[09:16:01] writeSpoofPlist: wrote 156 bytes to /private/var/mobile/Library/Preferences/com.apple.locationd.plist (enabled=NO, lat=0.000000, lon=0.000000)
-[09:16:01] restartLocationd: disconnect — restoring real GPS
-[09:16:01] restartLocationd: calling crashproc(locationd) via kernel r/w
-[09:16:01] restartLocationd: crashproc() succeeded — launchd will respawn locationd
+[09:16:04] applySpoof: 40.70655, -73.99938
