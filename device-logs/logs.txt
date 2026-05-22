@@ -1,17 +1,18 @@
-[09:02:58] [rc] RemoteCall FAILED BOTH MODES: RC-step-15: probePid=0 (first RC call failed) — RC unavailable
-[09:02:58] [tick 1] rc_locationd_reload_plist = -1 (FAIL)
-[09:02:58] [tick 1] notify_locationd_direct = 0 (ok)
-[09:02:58] [tick 1] restarting locationd (PID 737) — RC+notify both failed
-[09:02:58] restartLocationd: spoof timer tick 1: RC=-1 notify=0
-[09:02:58] restartLocationd: calling crashproc(locationd) via kernel r/w
-[09:02:58] restartLocationd: crashproc() succeeded — launchd will respawn locationd
-[09:03:01] [tick 1] locationd after restart: PID 739 (new process ✓)
-[09:03:01] [tick 2] spoofTimer fired — writing plist lat=40.706548 lon=-73.999376
-[09:03:01] writeSpoofPlist: wrote 166 bytes to /private/var/mobile/Library/Preferences/com.apple.locationd.plist (enabled=YES, lat=40.706548, lon=-73.999376)
-[09:03:01] [tick 2] writeSpoofPlist = OK
-[09:03:01] writeSpoofViaCFPrefs: CFPreferencesSynchronize=OK, enabled=YES, lat=40.706548, lon=-73.999376
-[09:03:01] [rc-preflight] proc=0xffffffe92cb85e38 task=0xffffffe92cb86578 firstThread=0xffffffeaf9368b10
-[09:03:01] [rc-preflight] excGuard[0x624]=0x04a6400000000099 off_task_threads_next=0x50 off_task_task_exc_guard=0x624
-[09:03:01] [rc-preflight] thread chain: t0=0xffffffeaf9368b10 t1=0xffffffeaf903b0e0 t2=0xffffffeaf8a8a1c0
-[09:03:01] [rc-preflight] t0 tro=0xffffffe847e18a60 tro->task=0xffffffe92cb86578 (expected task=0xffffffe92cb86578, match=1)
-[09:03:01] [rc] rc_locationd_reload_plist: trying RemoteCall bypass=YES
+[09:03:09] [rc] RemoteCall bypass=YES FAILED: RC-step-15: probePid=0 (first RC call failed) — trying bypass=NO
+[09:03:16] [rc] RemoteCall FAILED BOTH MODES: RC-step-15: probePid=0 (first RC call failed) — RC unavailable
+[09:03:16] [tick 2] rc_locationd_reload_plist = -1 (FAIL)
+[09:03:16] [tick 2] notify_locationd_direct = 0 (ok)
+[09:03:16] [tick 2] restarting locationd (PID 743) — RC+notify both failed
+[09:03:16] restartLocationd: spoof timer tick 2: RC=-1 notify=0
+[09:03:16] restartLocationd: calling crashproc(locationd) via kernel r/w
+[09:03:16] restartLocationd: crashproc() succeeded — launchd will respawn locationd
+[09:03:19] [tick 2] locationd after restart: PID 744 (new process ✓)
+[09:03:19] [tick 3] spoofTimer fired — writing plist lat=40.706548 lon=-73.999376
+[09:03:19] writeSpoofPlist: wrote 166 bytes to /private/var/mobile/Library/Preferences/com.apple.locationd.plist (enabled=YES, lat=40.706548, lon=-73.999376)
+[09:03:19] [tick 3] writeSpoofPlist = OK
+[09:03:19] writeSpoofViaCFPrefs: CFPreferencesSynchronize=OK, enabled=YES, lat=40.706548, lon=-73.999376
+[09:03:19] [rc-preflight] proc=0xffffffe92c89ba28 task=0xffffffe92c89c168 firstThread=0xffffffeaf9059a30
+[09:03:19] [rc-preflight] excGuard[0x624]=0x045ec00000000099 off_task_threads_next=0x50 off_task_task_exc_guard=0x624
+[09:03:19] [rc-preflight] thread chain: t0=0xffffffeaf9059a30 t1=0xffffffeaf7d8e1c0 t2=0xffffffeaf90f9a30
+[09:03:19] [rc-preflight] t0 tro=0xffffffe847e0d718 tro->task=0xffffffe92c89c168 (expected task=0xffffffe92c89c168, match=1)
+[09:03:19] [rc] rc_locationd_reload_plist: trying RemoteCall bypass=YES
