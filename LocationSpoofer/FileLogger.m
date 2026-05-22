@@ -11,53 +11,81 @@
 #include <stdio.h>
 #include <sys/utsname.h>
 
-// Fixed path — always findable via jailbroken file manager / AFC
 #define FL_DIR  "/private/var/mobile/Documents/LocationSpooferLogs"
 #define FL_FILE "/private/var/mobile/Documents/LocationSpooferLogs/logs.txt"
 
-static int               g_fd    = -1;
-static pthread_mutex_t   g_mutex = PTHREAD_MUTEX_INITIALIZER;
-static char              g_path[512] = {0};
+static int                g_fd     = -1;
+static pthread_mutex_t    g_mutex  = PTHREAD_MUTEX_INITIALIZER;
+static char               g_path[512] = {0};
+static NSMutableData     *g_buffer = nil;
+static dispatch_source_t  g_timer  = NULL;
 
-static void fl_write_raw(const char *line, int len) {
-    if (g_fd >= 0) write(g_fd, line, len);
+// ─── Mirror path (Files app / Documents) ────────────────────────────────────
+
+static NSString *fl_mirror_path(void) {
+    NSArray *paths = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES);
+    NSString *base = [paths.firstObject stringByAppendingPathComponent:@"SpooferLogs"];
+    [[NSFileManager defaultManager] createDirectoryAtPath:base
+                              withIntermediateDirectories:YES attributes:nil error:nil];
+    return [base stringByAppendingPathComponent:@"logs.txt"];
 }
 
-static void fl_write_mirror(const char *line) {
+// ─── Internal flush (call with mutex already held) ──────────────────────────
+
+static void fl_flush_locked(void) {
+    if (!g_buffer || g_buffer.length == 0) return;
+
+    // Primary file — /private/var/mobile/Documents/LocationSpooferLogs/logs.txt
+    if (g_fd >= 0) {
+        write(g_fd, g_buffer.bytes, g_buffer.length);
+        fsync(g_fd);
+    }
+
+    // Mirror — Documents/SpooferLogs/logs.txt (visible in Files app)
     @autoreleasepool {
-        NSArray *paths = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES);
-        NSString *base = [paths.firstObject stringByAppendingPathComponent:@"SpooferLogs"];
-        [[NSFileManager defaultManager] createDirectoryAtPath:base
-                                  withIntermediateDirectories:YES attributes:nil error:nil];
-        NSString *mirror = [base stringByAppendingPathComponent:@"logs.txt"];
-        NSString *s = [NSString stringWithUTF8String:line];
-        if (!s) return;
+        NSString *mirror = fl_mirror_path();
         NSFileHandle *fh = [NSFileHandle fileHandleForWritingAtPath:mirror];
         if (!fh) {
             [@"" writeToFile:mirror atomically:NO encoding:NSUTF8StringEncoding error:nil];
             fh = [NSFileHandle fileHandleForWritingAtPath:mirror];
         }
         [fh seekToEndOfFile];
-        [fh writeData:[s dataUsingEncoding:NSUTF8StringEncoding]];
+        [fh writeData:g_buffer];
         [fh closeFile];
     }
+
+    [g_buffer setLength:0];
 }
+
+// ─── Public API ─────────────────────────────────────────────────────────────
 
 void filelog_init(void) {
     pthread_mutex_lock(&g_mutex);
+
+    g_buffer = [NSMutableData dataWithCapacity:4096];
+
     mkdir(FL_DIR, 0755);
     int fd = open(FL_FILE, O_WRONLY | O_CREAT | O_APPEND, 0644);
     if (fd >= 0) {
         g_fd = fd;
         strlcpy(g_path, FL_FILE, sizeof(g_path));
     }
+
     pthread_mutex_unlock(&g_mutex);
 
-    // Gather device info for the header
+    // 5-second periodic flush — keeps both files current without per-write I/O
+    dispatch_queue_t q = dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_BACKGROUND, 0);
+    g_timer = dispatch_source_create(DISPATCH_SOURCE_TYPE_TIMER, 0, 0, q);
+    dispatch_source_set_timer(g_timer,
+                              dispatch_time(DISPATCH_TIME_NOW, 5 * NSEC_PER_SEC),
+                              5 * NSEC_PER_SEC,
+                              500 * NSEC_PER_MSEC);
+    dispatch_source_set_event_handler(g_timer, ^{ filelog_flush(); });
+    dispatch_resume(g_timer);
+
+    // Session header — write and flush immediately so the file is never empty
     struct utsname u; uname(&u);
     NSString *ios = [[UIDevice currentDevice] systemVersion];
-    NSString *model = [NSString stringWithUTF8String:u.machine];
-
     filelog_fmt("========== SESSION START ==========");
     filelog_fmt("Device : %s", u.machine);
     filelog_fmt("iOS    : %s", ios.UTF8String ?: "?");
@@ -82,10 +110,9 @@ void filelog(const char *msg) {
     NSLog(@"[Spoofer] %s", msg);
 
     pthread_mutex_lock(&g_mutex);
-    fl_write_raw(line, len);
+    if (!g_buffer) g_buffer = [NSMutableData dataWithCapacity:4096];
+    [g_buffer appendBytes:line length:(NSUInteger)len];
     pthread_mutex_unlock(&g_mutex);
-
-    fl_write_mirror(line);
 }
 
 void filelog_fmt(const char *fmt, ...) {
@@ -99,7 +126,7 @@ void filelog_fmt(const char *fmt, ...) {
 
 void filelog_flush(void) {
     pthread_mutex_lock(&g_mutex);
-    if (g_fd >= 0) fsync(g_fd);
+    fl_flush_locked();
     pthread_mutex_unlock(&g_mutex);
 }
 
@@ -107,9 +134,18 @@ const char *filelog_path(void) { return g_path; }
 
 void filelog_clear(void) {
     pthread_mutex_lock(&g_mutex);
+
+    if (g_buffer) [g_buffer setLength:0];
+
     if (g_fd >= 0) { close(g_fd); g_fd = -1; }
     unlink(FL_FILE);
     int fd = open(FL_FILE, O_WRONLY | O_CREAT | O_TRUNC, 0644);
     if (fd >= 0) g_fd = fd;
+
+    @autoreleasepool {
+        NSString *mirror = fl_mirror_path();
+        [@"" writeToFile:mirror atomically:NO encoding:NSUTF8StringEncoding error:nil];
+    }
+
     pthread_mutex_unlock(&g_mutex);
 }
