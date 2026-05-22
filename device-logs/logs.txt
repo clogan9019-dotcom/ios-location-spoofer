@@ -1,55 +1,22 @@
-[09:01:52] [ds_run] seeking_offset: 0xe8000: found wired_page: 0x138280000
-[09:01:52] [ds_run] progress: 59.1%
-[09:01:52] [ds_run] seeking_offset: 0x180000: found wired_page: 0x165cac000
-[09:01:52] [ds_run] progress: 59.1%
-[09:01:53] [ds_run] seeking_offset: 0x1d8000: found wired_page: 0x31460c000
-[09:01:53] [ds_run] progress: 59.1%
-[09:01:53] [ds_run] matched PCB via process marker: LocationSpoofer
-[09:01:53] [ds_run] pcb_start_offset: 0x0
-[09:01:53] [ds_run] target_inp_gencnt: 0x5f600
-[09:01:53] [ds_run] inp_list_next_pointer: 0xffffffeafc9ac400
-[09:01:53] [ds_run] icmp6filter: 0xffffffed11a87b40
-[09:01:53] [ds_run] corrupting icmp6filter pointer...
-[09:01:53] [ds_run] target corrupted: 0xffffffeafc9ac548
-[09:01:53] [ds_run] found control_socket at idx: 0x24fe
-[09:01:53] [ds_run] seeking_offset: 0x20000: found PCB page
-[09:01:53] [ds_run] progress: 70.0%
-[09:01:53] [ds_run] highest_success_idx: 498
-[09:01:53] [ds_run] success_read_count: 174
-[09:01:53] [ds_run] progress: 80.0%
-[09:01:53] [ds_run] walking kernel structures...
-[09:01:53] [ds_run] control_socket_pcb: 0xffffffeafc9ac000
-[09:01:53] [ds_run] pcbinfo_pointer: 0xfffffff0524de790
-[09:01:53] [ds_run] ipi_zone: 0xfffffff04f254f20
-[09:01:53] [ds_run] zv_name: 0xfffffff04e6a2513
-[09:01:53] [ds_run] searching for kernel mach-o header from 0xfffffff04e6a0000...
-[09:01:53] [ds_run] candidate mach-o at 0xfffffff04e630000: filetype=2 cpuinfo=0x2c0000002 (iter=28)
-[09:01:53] [ds_run] candidate mach-o at 0xfffffff04e628000: filetype=12 cpuinfo=0xc00000002 (iter=30)
-[09:01:53] [ds_run] found mh_fileset header at 0xfffffff04e628000
-[09:01:53] [ds_run] t1sz_boot: 0x11
-[09:01:53] [ds_run] kernel_base:  0xfffffff04e628000
-[09:01:53] [ds_run] kernel_slide: 0x47624000
-[09:01:53] [ds_run] progress: 99.0%
-[09:01:53] [ds_run] iOS 18: using so_count offset 0x254
-[09:01:53] [ds_run] kernel r/w is ready!
-[09:01:53] [ds_run] progress: 99.0%
-[09:01:53] [ds_run] our_proc: 0xffffffe92def6410
-[09:01:53] [ds_run] our_task: 0xffffffe92def6b50
-[09:01:53] CrashGuard: ds_run() returned 0
-[09:01:53] runExploit: ds_run_safe() returned 0, ds_is_ready=YES, resolved_t1sz=0x00
-[09:01:53] Kernel R/W acquired — initialising VFS...
-[09:01:53] vfs_init() = 0, vfs_isready() = true
-[09:01:53] Escaping sandbox...
-[09:01:53] [sbx] proc=0xffffffe92def6410 proc_ro_raw=0xffffffe7fa025718 proc_ro=0xffffffe7fa025718
-[09:01:53] [sbx] scanning proc_ro for ucred...
-[09:01:53] [sbx]   proc_ro+0x10: raw=0x2cf smr=0x2cf pac=0x2cf
-[09:01:53] [sbx]   proc_ro+0x18: raw=0x1000007dd smr=0x1000007dd pac=0x1000007dd
-[09:01:53] [sbx]   proc_ro+0x20: raw=0x2200230100000001 smr=0x230100000001 pac=0x230100000001
-[09:01:53] [sbx]   proc_ro+0x28: raw=0xffffffe847fb3d30 smr=0xffffffe847fb3d30 pac=0xffffffe847fb3d30
-[09:01:53] [sbx] found ucred at proc_ro+0x28 (SMR) = 0xffffffe847fb3d30
-[09:01:53] [sbx] ucred=0xffffffe847fb3d30 label=0xffffffe847dc7480 sandbox=0xffffffe847e750c0 ext_set=0xffffffe8484b3280
-[09:01:53] [sbx] patched 5 extensions
-[09:01:53] [sbx] filled 11 empty hash slots
-[09:01:53] [sbx] escaped!
-[09:01:53] sbx_escape() = ok — sandbox removed
-[09:01:53] All systems ready — exploit complete
+[09:02:05] applySpoof: 40.70655, -73.99938
+[09:02:05] activateSpoof: 40.70655, -73.99938
+[09:02:05] writeSpoofPlist: wrote 166 bytes to /private/var/mobile/Library/Preferences/com.apple.locationd.plist (enabled=YES, lat=40.706548, lon=-73.999376)
+[09:02:05] writeSpoofViaCFPrefs: CFPreferencesSynchronize=OK, enabled=YES, lat=40.706548, lon=-73.999376
+[09:02:05] activateSpoof: trying RC pref-reload inside locationd (attempt #1)
+[09:02:05] [rc-preflight] proc=0xffffffe92c8a1e38 task=0xffffffe92c8a2578 firstThread=0xffffffeaf91d3870
+[09:02:05] [rc-preflight] excGuard[0x624]=0x00eb000000000099 off_task_threads_next=0x50 off_task_task_exc_guard=0x624
+[09:02:05] [rc-preflight] thread chain: t0=0xffffffeaf91d3870 t1=0xffffffeaf8c62950 t2=0xffffffeaf7edc380
+[09:02:05] [rc-preflight] t0 tro=0xffffffe847e1ab08 tro->task=0xffffffe92c8a2578 (expected task=0xffffffe92c8a2578, match=1)
+[09:02:05] [rc] rc_locationd_reload_plist: trying RemoteCall bypass=YES
+[09:02:13] [rc] RemoteCall bypass=YES FAILED: RC-step-15: probePid=0 (first RC call failed) — trying bypass=NO
+[09:02:16] applySpoof: 40.70655, -73.99938
+[09:02:20] [rc] RemoteCall FAILED BOTH MODES: RC-step-15: probePid=0 (first RC call failed) — RC unavailable
+[09:02:20] activateSpoof: rc_locationd_reload_plist() = -1 (FAIL)
+[09:02:20] activateSpoof: RC failed (-1) — falling back to locationd restart
+[09:02:20] activateSpoof: locationd PID before restart = 727
+[09:02:20] restartLocationd: activating spoof at 40.706548, -73.999376
+[09:02:20] restartLocationd: calling crashproc(locationd) via kernel r/w
+[09:02:20] restartLocationd: crashproc() succeeded — launchd will respawn locationd
+[09:02:20] activateSpoof: waiting 3s for locationd to restart...
+[09:02:23] activateSpoof: locationd PID after restart  = 729 (NEW process ✓)
+[09:02:23] spoofTimer: started (interval 3s)
