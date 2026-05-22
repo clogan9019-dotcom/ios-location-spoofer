@@ -1,7 +1,12 @@
-[20:54:35] disconnect: clearing spoof
-[20:54:35] writeSpoofPlist: wrote 156 bytes to /private/var/mobile/Library/Preferences/com.apple.locationd.plist (enabled=NO, lat=0.000000, lon=0.000000)
-[20:54:35] restartLocationd: disconnect — restoring real GPS
-[20:54:35] restartLocationd: locationd pid = 2001
-[20:54:35] restartLocationd: kill(2001, SIGKILL) = -1 (errno 1) — falling back to launchctl
-[20:54:35] restartLocationd: using launchctl kickstart -k system/com.apple.locationd
-[20:54:35] restartLocationd: launchctl kickstart returned -1
+[20:54:43] [rc] RemoteCall FAILED BOTH MODES: RemoteCall init failed — RC unavailable
+[20:54:43] activateSpoof: rc_locationd_reload_plist() = -1 (FAIL)
+[20:54:43] activateSpoof: RC failed (-1) — falling back to locationd restart
+[20:54:43] activateSpoof: locationd PID before restart = 2003
+[20:54:43] restartLocationd: activating spoof at 40.709852, -74.005530
+[20:54:43] restartLocationd: locationd pid = 2003
+[20:54:43] restartLocationd: kill(2003, SIGKILL) = -1 (errno 1) — falling back to launchctl
+[20:54:43] restartLocationd: using launchctl kickstart -k system/com.apple.locationd
+[20:54:43] restartLocationd: launchctl kickstart returned -1
+[20:54:43] activateSpoof: waiting 3s for locationd to restart...
+[20:54:46] activateSpoof: locationd PID after restart  = 2003 (SAME — restart may have failed)
+[20:54:46] spoofTimer: started (interval 3s)
