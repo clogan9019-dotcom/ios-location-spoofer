@@ -1,13 +1,55 @@
-[09:01:16] ========== SESSION START ==========
-[09:01:16] Device : iPhone17,5
-[09:01:16] iOS    : 18.7.1
-[09:01:16] Kernel : 24.6.0
-[09:01:16] Log    : /private/var/mobile/Documents/LocationSpooferLogs/logs.txt
-[09:01:16] ===================================
-[09:01:16] --- Device Info ---
-[09:01:16] Model     : iPhone
-[09:01:16] iOS       : 18.7.1
-[09:01:16] Name      : iPhone
-[09:01:16] t1sz cfg  : Auto (not yet resolved)
-[09:01:16] Log file  : 
-[09:01:16] -------------------
+[09:01:20] ========== SESSION START ==========
+[09:01:20] Device : iPhone17,5
+[09:01:20] iOS    : 18.7.1
+[09:01:20] Kernel : 24.6.0
+[09:01:20] Log    : /private/var/mobile/Documents/LocationSpooferLogs/logs.txt
+[09:01:20] ===================================
+[09:01:20] Log cleared by user
+[09:01:20] runExploit: using auto t1sz_boot
+[09:01:20] runExploit: setting log/progress callbacks
+[09:01:20] runExploit: calling ds_run_safe()...
+[09:01:20] CrashGuard: installing signal handlers
+[09:01:20] CrashGuard: calling ds_run()...
+[09:01:20] [ds_run] progress: 0.0%
+[09:01:20] [ds_run] starting darksword
+[09:01:20] [ds_run] progress: 10.0%
+[09:01:20] [ds_run] device: iPhone17,5
+[09:01:20] [ds_run] ispac: yes
+[09:01:20] [ds_run] running on a18 device
+[09:01:28] [ds_run] read_fd: 0x5
+[09:01:28] [ds_run] write_fd: 0x6
+[09:01:28] [ds_run] executable_path:       /private/var/containers/Bundle/Application/C9690E81-AFB9-4C4F-834A-1183B19A89FD/LocationSpoofer.app/LocationSpoofer
+[09:01:28] [ds_run] host_executable_path:  /private/var/containers/Bundle/Application/C9690E81-AFB9-4C4F-834A-1183B19A89FD/LocationSpoofer.app/LocationSpoofer
+[09:01:28] [ds_run] guest_executable_name: LocationSpoofer
+[09:01:28] [ds_run] host_executable_name:  LocationSpoofer
+[09:01:28] [ds_run] kernel_process_name:   LocationSpoofer
+[09:01:28] [ds_run] livecontainer_bundle:  no
+[09:01:28] [ds_run] livecontainer_guest:   no
+[09:01:28] [ds_run] rehosted_process:      no
+[09:01:28] [ds_run] process_marker 0: LocationSpoofer
+[09:01:28] [ds_run] executable_name: LocationSpoofer
+[09:01:28] [ds_run] free_thread_arg: 0x158c20000
+[09:01:28] [ds_run] progress: 30.0%
+[09:01:28] [ds_run] physical_mapping_address: 0x1158a4000
+[09:01:28] [ds_run] pc_object: 0x430b
+[09:01:28] [ds_run] pc_address: 0x16ed38000
+[09:01:28] [ds_run] allocating wired memory (131072 entries)...
+[09:01:30] [ds_run] allocating wired memory done
+[09:01:30] [ds_run] progress: 51.0%
+[09:01:30] [ds_run] seeking_offset: 0x14000: found wired_page: 0x317bf0000
+[09:01:30] [ds_run] progress: 59.1%
+[09:01:30] [ds_run] seeking_offset: 0x78000: found wired_page: 0x1642f0000
+[09:01:30] [ds_run] progress: 59.1%
+[09:01:31] [ds_run] seeking_offset: 0x34000: found wired_page: 0x317b98000
+[09:01:31] [ds_run] progress: 59.1%
+[09:01:31] [ds_run] seeking_offset: 0x20000: found wired_page: 0x152514000
+[09:01:31] [ds_run] progress: 59.1%
+[09:01:31] [ds_run] seeking_offset: 0x64000: found wired_page: 0x1577d4000
+[09:01:31] [ds_run] progress: 59.1%
+[09:01:31] [ds_run] seeking_offset: 0xb4000: found wired_page: 0x1680dc000
+[09:01:31] [ds_run] progress: 59.1%
+[09:01:31] [ds_run] seeking_offset: 0x158000: found wired_page: 0x17c6f4000
+[09:01:31] [ds_run] progress: 59.1%
+[09:01:31] [ds_run] seeking_offset: 0xd0000: found wired_page: 0x316cb8000
+[09:01:31] [ds_run] progress: 59.1%
+[09:01:31] [ds_run] waiting for zone trimming...
