@@ -31,6 +31,8 @@ final class KernelLocationManager: NSObject, ObservableObject {
     private var spoofTimer: DispatchSourceTimer?
     private let spoofQueue = DispatchQueue(label: "com.locationspoofer.spoof", qos: .userInitiated)
     private var didActivateSpoof = false
+    private var lastTimerRestart: Date = .distantPast
+    private let kTimerRestartInterval: Double = 15.0
 
     private override init() {
         super.init()
@@ -330,13 +332,25 @@ final class KernelLocationManager: NSObject, ObservableObject {
             guard let self, self.isConnected else { return }
             self.writeSpoofPlist(lat: self.spoofLat, lon: self.spoofLon, enabled: true)
             let rcRet = rc_locationd_reload_plist()
-            if rcRet != 0 {
-                filelog("(spoofTimer) RC reload returned \(rcRet) — trying direct notify fallback")
-                let directRet = notify_locationd_direct()
-                if directRet != 0 {
-                    filelog("(spoofTimer) direct notify also returned \(directRet)")
-                }
+            if rcRet == 0 {
+                // RC succeeded — locationd has our fake coords in memory, nothing more needed.
+                return
             }
+            filelog(String(format: "(spoofTimer) RC reload failed (%d) — trying direct notify", rcRet))
+            let notifyRet = notify_locationd_direct()
+            if notifyRet == 0 {
+                return
+            }
+            // Both methods failed. locationd will fall back to real GPS unless we restart it.
+            // Rate-limit restarts to at most once every kTimerRestartInterval seconds.
+            let now = Date()
+            guard now.timeIntervalSince(self.lastTimerRestart) > self.kTimerRestartInterval else {
+                filelog("(spoofTimer) RC+notify failed — restart suppressed (cooldown)")
+                return
+            }
+            self.lastTimerRestart = now
+            filelog("(spoofTimer) RC+notify both failed — restarting locationd to re-assert spoof")
+            self.restartLocationd(reason: "spoof timer: RC and notify both failed")
         }
         timer.resume()
         spoofTimer = timer
@@ -392,9 +406,10 @@ final class KernelLocationManager: NSObject, ObservableObject {
         let plistPath = "/private/var/mobile/Library/Preferences/com.apple.locationd.plist"
 
         let dict: NSDictionary = [
-            "SimulatedLatitude":  lat,
-            "SimulatedLongitude": lon,
-            "SimulationEnabled":  enabled
+            "SimulatedLatitude":        lat,
+            "SimulatedLongitude":       lon,
+            "SimulationEnabled":        enabled,
+            "LocationSimulatorEnabled": enabled   // iOS 18 variant key
         ]
         guard let data = try? PropertyListSerialization.data(
             fromPropertyList: dict, format: .binary, options: 0) else {
