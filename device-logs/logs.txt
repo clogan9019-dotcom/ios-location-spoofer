@@ -1,1 +1,12 @@
-[20:54:55] [rc] RemoteCall bypass=YES FAILED: RemoteCall init failed — trying bypass=NO
+[20:55:02] [rc] RemoteCall FAILED BOTH MODES: RemoteCall init failed — RC unavailable
+[20:55:02] activateSpoof: rc_locationd_reload_plist() = -1 (FAIL)
+[20:55:02] activateSpoof: RC failed (-1) — falling back to locationd restart
+[20:55:02] activateSpoof: locationd PID before restart = 2007
+[20:55:02] restartLocationd: activating spoof at 40.709852, -74.005530
+[20:55:02] restartLocationd: locationd pid = 2007
+[20:55:02] restartLocationd: kill(2007, SIGKILL) = -1 (errno 1) — falling back to launchctl
+[20:55:02] restartLocationd: using launchctl kickstart -k system/com.apple.locationd
+[20:55:02] restartLocationd: launchctl kickstart returned -1
+[20:55:02] activateSpoof: waiting 3s for locationd to restart...
+[20:55:05] activateSpoof: locationd PID after restart  = 2007 (SAME — restart may have failed)
+[20:55:05] spoofTimer: started (interval 3s)
