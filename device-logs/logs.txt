@@ -1,1 +1,10 @@
-[21:13:45] [rc] RemoteCall bypass=YES FAILED: RemoteCall init failed — trying bypass=NO
+[21:13:52] [rc] RemoteCall FAILED BOTH MODES: RemoteCall init failed — RC unavailable
+[21:13:52] activateSpoof: rc_locationd_reload_plist() = -1 (FAIL)
+[21:13:52] activateSpoof: RC failed (-1) — falling back to locationd restart
+[21:13:52] activateSpoof: locationd PID before restart = 2217
+[21:13:52] restartLocationd: activating spoof at 40.711213, -74.004590
+[21:13:52] restartLocationd: calling crashproc(locationd) via kernel r/w
+[21:13:52] restartLocationd: crashproc() succeeded — launchd will respawn locationd
+[21:13:52] activateSpoof: waiting 3s for locationd to restart...
+[21:13:55] activateSpoof: locationd PID after restart  = 2219 (NEW process ✓)
+[21:13:55] spoofTimer: started (interval 3s)
