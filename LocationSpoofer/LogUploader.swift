@@ -19,7 +19,21 @@ final class LogUploader {
     }
     private let primaryLogPath = "/private/var/mobile/Documents/LocationSpooferLogs/logs.txt"
 
+    // Dedicated session with ALL caching disabled.
+    // This is the root cause of 409 errors: URLSession.shared caches the
+    // GET /contents response, so fetchSHA returns a stale SHA after an upload
+    // and every subsequent PUT is rejected by GitHub.
+    private let session: URLSession = {
+        let cfg = URLSessionConfiguration.ephemeral
+        cfg.requestCachePolicy     = .reloadIgnoringLocalAndRemoteCacheData
+        cfg.urlCache               = nil
+        cfg.timeoutIntervalForRequest  = 30
+        cfg.timeoutIntervalForResource = 60
+        return URLSession(configuration: cfg)
+    }()
+
     private var uploadTimer: DispatchSourceTimer?
+    // Serial queue — only one upload runs at a time, no concurrent SHA races.
     private let uploadQueue = DispatchQueue(label: "com.locationspoofer.logupload", qos: .background)
     private var isUploading = false
 
@@ -30,7 +44,7 @@ final class LogUploader {
     func startAutoUpload(intervalSeconds: Double = 60.0) {
         stopAutoUpload()
         let timer = DispatchSource.makeTimerSource(queue: uploadQueue)
-        timer.schedule(deadline: .now() + 5, repeating: intervalSeconds, leeway: .seconds(5))
+        timer.schedule(deadline: .now() + 10, repeating: intervalSeconds, leeway: .seconds(5))
         timer.setEventHandler { [weak self] in self?.uploadLog() }
         timer.resume()
         uploadTimer = timer
@@ -46,7 +60,11 @@ final class LogUploader {
     func uploadLog(completion: ((String) -> Void)? = nil) {
         uploadQueue.async { [weak self] in
             guard let self else { return }
-            guard !self.isUploading else { completion?("Already uploading…"); return }
+            // Serial guard: if an upload is already running on this queue, skip.
+            guard !self.isUploading else {
+                completion?("Already uploading — skipped.")
+                return
+            }
             self.isUploading = true
             defer { self.isUploading = false }
 
@@ -67,16 +85,13 @@ final class LogUploader {
             let base64Content = logData.base64EncodedString()
             let timestamp     = ISO8601DateFormatter().string(from: Date())
 
+            // Always fetch a fresh SHA immediately before the PUT (cache disabled).
             let result = self.putFile(base64Content: base64Content,
                                       message: "device log \(timestamp)",
-                                      token: token,
-                                      retryOn409: true)
-
-            // On success, wipe both log files so the next session starts clean.
+                                      token: token)
             if result == "Sent successfully." {
                 self.clearLogs()
             }
-
             completion?(result)
         }
     }
@@ -84,23 +99,18 @@ final class LogUploader {
     // MARK: - Clear logs
 
     private func clearLogs() {
-        let fm = FileManager.default
-        for path in [mirrorLogPath, primaryLogPath] {
-            // Truncate to empty rather than delete, so the file descriptor in
-            // FileLogger stays valid and new log lines keep appending correctly.
-            if fm.fileExists(atPath: path) {
-                try? "".write(toFile: path, atomically: false, encoding: .utf8)
-            }
+        for path in [mirrorLogPath, primaryLogPath] where FileManager.default.fileExists(atPath: path) {
+            try? "".write(toFile: path, atomically: false, encoding: .utf8)
         }
     }
 
-    // MARK: - PUT with optional 409 retry
+    // MARK: - PUT (fetches fresh SHA each call, retries once on 409)
 
-    @discardableResult
     private func putFile(base64Content: String,
                          message: String,
                          token: String,
-                         retryOn409: Bool) -> String {
+                         isRetry: Bool = false) -> String {
+        // Fetch SHA right now, with caching disabled, so it's always current.
         let sha = fetchSHA(token: token)
 
         var body: [String: Any] = ["message": message, "content": base64Content]
@@ -113,19 +123,19 @@ final class LogUploader {
         let urlString = "https://api.github.com/repos/\(owner)/\(repo)/contents/\(remotePath)"
         guard let url = URL(string: urlString) else { return "Bad URL." }
 
-        var request = URLRequest(url: url)
-        request.httpMethod  = "PUT"
-        request.setValue("Bearer \(token)",             forHTTPHeaderField: "Authorization")
-        request.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
-        request.setValue("application/json",            forHTTPHeaderField: "Content-Type")
-        request.httpBody        = bodyData
-        request.timeoutInterval = 30
+        var req = URLRequest(url: url)
+        req.httpMethod   = "PUT"
+        req.cachePolicy  = .reloadIgnoringLocalAndRemoteCacheData
+        req.setValue("Bearer \(token)",             forHTTPHeaderField: "Authorization")
+        req.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
+        req.setValue("application/json",            forHTTPHeaderField: "Content-Type")
+        req.httpBody = bodyData
 
         let sem    = DispatchSemaphore(value: 0)
         var result = "Unknown error."
         var statusCode = 0
 
-        URLSession.shared.dataTask(with: request) { data, response, error in
+        session.dataTask(with: req) { data, response, error in
             if let error = error {
                 result = "Network error: \(error.localizedDescription)"
             } else if let http = response as? HTTPURLResponse {
@@ -144,32 +154,35 @@ final class LogUploader {
             }
             sem.signal()
         }.resume()
-
         sem.wait()
 
-        // 409 = stale SHA. Re-fetch and retry once.
-        if statusCode == 409 && retryOn409 {
+        // 409 means our SHA was still stale despite the fresh fetch.
+        // Wait 1 second for any in-flight GitHub write to settle, then retry once.
+        if statusCode == 409 && !isRetry {
+            Thread.sleep(forTimeInterval: 1.0)
             return putFile(base64Content: base64Content,
                            message: message,
                            token: token,
-                           retryOn409: false)
+                           isRetry: true)
         }
 
         return result
     }
 
-    // MARK: - Helpers
+    // MARK: - SHA fetch (always bypasses cache)
 
     private func fetchSHA(token: String) -> String? {
         let urlString = "https://api.github.com/repos/\(owner)/\(repo)/contents/\(remotePath)"
         guard let url = URL(string: urlString) else { return nil }
-        var request = URLRequest(url: url)
-        request.setValue("Bearer \(token)",             forHTTPHeaderField: "Authorization")
-        request.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
-        request.timeoutInterval = 10
+
+        var req = URLRequest(url: url)
+        req.cachePolicy = .reloadIgnoringLocalAndRemoteCacheData
+        req.setValue("Bearer \(token)",             forHTTPHeaderField: "Authorization")
+        req.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
+
         let sem  = DispatchSemaphore(value: 0)
         var sha: String?
-        URLSession.shared.dataTask(with: request) { data, _, _ in
+        session.dataTask(with: req) { data, _, _ in
             if let data,
                let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
                let s    = json["sha"] as? String { sha = s }
