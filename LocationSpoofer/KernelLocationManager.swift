@@ -437,8 +437,6 @@ final class KernelLocationManager: NSObject, ObservableObject {
         LogUploader.shared.uploadLog()
     }
 
-    @discardableResult
-
     // Write simulation keys through CFPreferences so cfprefsd's cache is updated.
     // This is essential: if we only write the .plist file directly, cfprefsd keeps
     // returning its stale (real-GPS) cached values whenever locationd queries it,
