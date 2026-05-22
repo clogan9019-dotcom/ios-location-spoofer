@@ -342,17 +342,24 @@ final class KernelLocationManager: NSObject, ObservableObject {
             filelog(String(format: "[tick %d] writeSpoofPlist = %@", tick, writeOk ? "OK" : "FAILED"))
             guard writeOk else { return }
 
+            // Write through CFPreferences so cfprefsd's cache is updated BEFORE
+            // we notify locationd to re-read. Without this, cfprefsd returns stale
+            // real-GPS values and the spoof drops after ~1 second.
+            self.writeSpoofViaCFPrefs(lat: self.spoofLat, lon: self.spoofLon, enabled: true)
+
             let rcRet = rc_locationd_reload_plist()
             filelog(String(format: "[tick %d] rc_locationd_reload_plist = %d (%@)",
                            tick, rcRet, rcRet == 0 ? "SUCCESS" : "FAIL"))
             if rcRet == 0 { return }
 
+            // Post notifications directly — locationd re-reads from cfprefsd which
+            // now has our simulated values. Do NOT early-return on success so that
+            // the restart fallback below can still fire if the spoof has dropped.
             let notifyRet = notify_locationd_direct()
             filelog(String(format: "[tick %d] notify_locationd_direct = %d (%@)",
                            tick, notifyRet, notifyRet == 0 ? "ok" : "failed"))
-            if notifyRet == 0 { return }
 
-            // Both failed — restart locationd (rate-limited).
+            // Fallback: restart locationd (rate-limited) if both RC and notify failed.
             let now = Date()
             let elapsed = now.timeIntervalSince(self.lastTimerRestart)
             guard elapsed > self.kTimerRestartInterval else {
@@ -392,6 +399,8 @@ final class KernelLocationManager: NSObject, ObservableObject {
             LogUploader.shared.uploadLog()
             return
         }
+        // Also write via CFPreferences so cfprefsd cache is warm from the start.
+        writeSpoofViaCFPrefs(lat: lat, lon: lon, enabled: true)
 
         flog("activateSpoof: trying RC pref-reload inside locationd (attempt #\(timerTickCount + 1))")
         let rcRet = rc_locationd_reload_plist()
@@ -429,6 +438,30 @@ final class KernelLocationManager: NSObject, ObservableObject {
     }
 
     @discardableResult
+
+    // Write simulation keys through CFPreferences so cfprefsd's cache is updated.
+    // This is essential: if we only write the .plist file directly, cfprefsd keeps
+    // returning its stale (real-GPS) cached values whenever locationd queries it,
+    // causing the spoof to drop after ~1 second.
+    @discardableResult
+    private func writeSpoofViaCFPrefs(lat: Double, lon: Double, enabled: Bool) -> Bool {
+        let domain = "com.apple.locationd" as CFString
+        let user   = kCFPreferencesCurrentUser
+        let host   = kCFPreferencesCurrentHost
+        CFPreferencesSetValue("SimulationEnabled" as CFString,
+                              NSNumber(value: enabled), domain, user, host)
+        CFPreferencesSetValue("LocationSimulatorEnabled" as CFString,
+                              NSNumber(value: enabled), domain, user, host)
+        CFPreferencesSetValue("SimulatedLatitude" as CFString,
+                              enabled ? NSNumber(value: lat) : nil, domain, user, host)
+        CFPreferencesSetValue("SimulatedLongitude" as CFString,
+                              enabled ? NSNumber(value: lon) : nil, domain, user, host)
+        let synced = CFPreferencesSynchronize(domain, user, host)
+        flog(String(format: "writeSpoofViaCFPrefs: CFPreferencesSynchronize=%@, enabled=%@, lat=%.6f, lon=%.6f",
+                    synced ? "OK" : "FAILED", enabled ? "YES" : "NO", lat, lon))
+        return synced
+    }
+
     private func writeSpoofPlist(lat: Double, lon: Double, enabled: Bool) -> Bool {
         let plistPath = "/private/var/mobile/Library/Preferences/com.apple.locationd.plist"
 
