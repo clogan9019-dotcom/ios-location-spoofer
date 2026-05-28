@@ -1,6 +1,7 @@
 import Foundation
 import Combine
 import CoreLocation
+import UIKit
 import Darwin
 
 final class KernelLocationManager: NSObject, ObservableObject {
@@ -118,6 +119,7 @@ final class KernelLocationManager: NSObject, ObservableObject {
         logs = []
         filelog_clear()
         filelog_init()
+        logFilePath = String(cString: filelog_path())
         flog("Log cleared by user")
     }
 
