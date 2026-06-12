@@ -1,10 +1,1 @@
-[12:39:07] applySpoof: 40.70648, -74.01365
-[12:39:07] activateSpoof: 40.70648, -74.01365
-[12:39:07] writeSpoofPlist: wrote 166 bytes to /private/var/mobile/Library/Preferences/com.apple.locationd.plist (enabled=YES, lat=40.706483, lon=-74.013650)
-[12:39:07] writeSpoofViaCFPrefs: CFPreferencesSynchronize=OK, enabled=YES, lat=40.706483, lon=-74.013650
-[12:39:07] activateSpoof: trying RC pref-reload inside locationd (attempt #1)
-[12:39:07] [rc-preflight] proc=0xffffffe1f1552410 task=0xffffffe1f1552b50 firstThread=0xffffffe1f2f70380
-[12:39:07] [rc-preflight] excGuard[0x624]=0x04f4800000000099 off_task_threads_next=0x50 off_task_task_exc_guard=0x624
-[12:39:07] [rc-preflight] thread chain: t0=0xffffffe1f2f70380 t1=0xffffffe1f3330380 t2=0xffffffe1f2f761c0
-[12:39:07] [rc-preflight] t0 tro=0xffffffdf3ff1a008 tro->task=0xffffffe1f1552b50 (expected task=0xffffffe1f1552b50, match=1)
-[12:39:07] [rc] rc_locationd_reload_plist: trying RemoteCall bypass=YES
+[12:39:15] [rc] RemoteCall bypass=YES FAILED: RC-step-15: probePid=0 (first RC call failed) — trying bypass=NO
