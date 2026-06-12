@@ -1,3 +1,23 @@
-[12:39:40] applySpoof: 40.70648, -74.01365
-[12:39:42] activateSpoof: locationd PID after restart  = 6415 (NEW process ✓)
-[12:39:42] spoofTimer: started (interval 3s)
+[12:39:42] activateSpoof: 40.70648, -74.01365
+[12:39:42] writeSpoofPlist: wrote 166 bytes to /private/var/mobile/Library/Preferences/com.apple.locationd.plist (enabled=YES, lat=40.706483, lon=-74.013650)
+[12:39:42] writeSpoofViaCFPrefs: CFPreferencesSynchronize=OK, enabled=YES, lat=40.706483, lon=-74.013650
+[12:39:42] activateSpoof: trying RC pref-reload inside locationd (attempt #1)
+[12:39:42] [rc-preflight] proc=0xffffffe1efbec248 task=0xffffffe1efbec988 firstThread=0xffffffe1f442da30
+[12:39:42] [rc-preflight] excGuard[0x624]=0x04bec00000000099 off_task_threads_next=0x50 off_task_task_exc_guard=0x624
+[12:39:42] [rc-preflight] thread chain: t0=0xffffffe1f442da30 t1=0xffffffe1f50061c0 t2=0xffffffe1f2c730e0
+[12:39:42] [rc-preflight] t0 tro=0xffffffdf3fe8c958 tro->task=0xffffffe1efbec988 (expected task=0xffffffe1efbec988, match=1)
+[12:39:42] [rc] rc_locationd_reload_plist: trying RemoteCall bypass=YES
+[12:39:49] [rc] RemoteCall bypass=YES FAILED: RC-step-15: probePid=0 (first RC call failed) — trying bypass=NO
+[12:43:08] ========== SESSION START ==========
+[12:43:08] Device : iPhone17,5
+[12:43:08] iOS    : 18.7.1
+[12:43:08] Kernel : 24.6.0
+[12:43:08] Log    : /var/mobile/Containers/Data/Application/8E503A16-D55C-4F03-9172-2E9AFEE11928/Documents/SpooferLogs/logs.txt
+[12:43:08] ===================================
+[12:43:08] --- Device Info ---
+[12:43:08] Model     : iPhone
+[12:43:08] iOS       : 18.7.1
+[12:43:08] Name      : iPhone
+[12:43:08] t1sz cfg  : Auto (not yet resolved)
+[12:43:08] Log file  : /var/mobile/Containers/Data/Application/8E503A16-D55C-4F03-9172-2E9AFEE11928/Documents/SpooferLogs/logs.txt
+[12:43:08] -------------------
