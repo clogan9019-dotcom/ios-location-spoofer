@@ -1,10 +1,13 @@
-[12:39:25] activateSpoof: 40.70648, -74.01365
-[12:39:25] writeSpoofPlist: wrote 166 bytes to /private/var/mobile/Library/Preferences/com.apple.locationd.plist (enabled=YES, lat=40.706483, lon=-74.013650)
-[12:39:25] writeSpoofViaCFPrefs: CFPreferencesSynchronize=OK, enabled=YES, lat=40.706483, lon=-74.013650
-[12:39:25] activateSpoof: trying RC pref-reload inside locationd (attempt #1)
-[12:39:25] [rc-preflight] proc=0xffffffe1f272fa28 task=0xffffffe1f2730168 firstThread=0xffffffe1f4c87870
-[12:39:25] [rc-preflight] excGuard[0x624]=0x006ac00000000099 off_task_threads_next=0x50 off_task_task_exc_guard=0x624
-[12:39:25] [rc-preflight] thread chain: t0=0xffffffe1f4c87870 t1=0xffffffe1f33461c0 t2=0xffffffe1f4a6b0e0
-[12:39:25] [rc-preflight] t0 tro=0xffffffdf3fe9e588 tro->task=0xffffffe1f2730168 (expected task=0xffffffe1f2730168, match=1)
-[12:39:25] [rc] rc_locationd_reload_plist: trying RemoteCall bypass=YES
-[12:39:32] [rc] RemoteCall bypass=YES FAILED: RC-step-15: probePid=0 (first RC call failed) — trying bypass=NO
+[12:39:39] [rc] RemoteCall FAILED BOTH MODES: RC-step-15: probePid=0 (first RC call failed) — RC unavailable
+[12:39:39] activateSpoof: rc_locationd_reload_plist() = -1 (FAIL)
+[12:39:39] activateSpoof: RC failed (-1) — falling back to locationd restart
+[12:39:39] activateSpoof: locationd PID before restart = 6414
+[12:39:39] restartLocationd: activating spoof at 40.706483, -74.013650
+[12:39:39] restartLocationd: calling crashproc(locationd) via kernel r/w
+[12:39:39] restartLocationd: crashproc() succeeded — launchd will respawn locationd
+[12:39:39] activateSpoof: waiting 3s for locationd to restart...
+[12:39:39] disconnect: clearing spoof
+[12:39:39] writeSpoofPlist: wrote 156 bytes to /private/var/mobile/Library/Preferences/com.apple.locationd.plist (enabled=NO, lat=0.000000, lon=0.000000)
+[12:39:39] restartLocationd: disconnect — restoring real GPS
+[12:39:39] restartLocationd: calling crashproc(locationd) via kernel r/w
+[12:39:39] restartLocationd: crashproc() succeeded — launchd will respawn locationd
