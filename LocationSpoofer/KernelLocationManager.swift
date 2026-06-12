@@ -168,24 +168,15 @@ final class KernelLocationManager: NSObject, ObservableObject {
                 completion?(false); return
             }
 
-            self.flog("runExploit: calling ds_run()...")
+            self.flog("runExploit: calling ds_run_safe()...")
             filelog_flush()
 
-            let result = ds_run()
+            let ret = ds_run_safe()
 
-            if self.cancelRequested {
-                self.flog("runExploit: cancelled after ds_run")
-                DispatchQueue.main.async { self.isRunning = false; self.status = "Stopped"; self.progress = 0 }
-                completion?(false); return
-            }
-
-            let resolvedT1sz = UserDefaults.standard.object(forKey: "lara.t1sz_boot") as? UInt64 ?? 0
-            self.flog(String(format: "runExploit: ds_run() returned %d, ds_is_ready=%@, resolved_t1sz=0x%02X",
-                             Int32(result), ds_is_ready() ? "YES" : "NO", resolvedT1sz))
-
-            guard result == 0, ds_is_ready() else {
-                let err = "Exploit failed (code \(result))"
-                self.flog("ERROR: \(err)")
+            if ret < 0 {
+                let sigName = String(cString: ds_run_safe_signal_name())
+                let err = "Exploit crashed — caught \(sigName)"
+                self.flog("CRASH: \(err)")
                 filelog_flush()
                 LogUploader.shared.uploadLog()
                 DispatchQueue.main.async {
@@ -195,11 +186,27 @@ final class KernelLocationManager: NSObject, ObservableObject {
                 completion?(false); return
             }
 
-            let kernbase  = ds_get_kernel_base()
-            let kernslide = ds_get_kernel_slide()
-            self.flog("(ds) exploit success!")
-            self.flog(String(format: "(ds) kernel_base:  0x%llx", kernbase))
-            self.flog(String(format: "(ds) kernel_slide: 0x%llx", kernslide))
+            if self.cancelRequested {
+                self.flog("runExploit: cancelled after ds_run")
+                DispatchQueue.main.async { self.isRunning = false; self.status = "Stopped"; self.progress = 0 }
+                completion?(false); return
+            }
+
+            let resolvedT1sz = UserDefaults.standard.object(forKey: "lara.t1sz_boot") as? UInt64 ?? 0
+            self.flog(String(format: "runExploit: ds_run_safe() returned %d, ds_is_ready=%@, resolved_t1sz=0x%02X",
+                             ret, ds_is_ready() ? "YES" : "NO", resolvedT1sz))
+
+            guard ret == 0, ds_is_ready() else {
+                let err = "Exploit failed (code \(ret))"
+                self.flog("ERROR: \(err)")
+                filelog_flush()
+                LogUploader.shared.uploadLog()
+                DispatchQueue.main.async {
+                    self.isRunning = false; self.exploitError = err
+                    self.status = err; self.progress = 0
+                }
+                completion?(false); return
+            }
 
             self.flog("Kernel R/W acquired — initialising VFS...")
             DispatchQueue.main.async { self.status = "Kernel R/W ready — initialising VFS..." }
