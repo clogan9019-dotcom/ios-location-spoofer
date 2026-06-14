@@ -3,11 +3,10 @@ import Foundation
 final class LogUploader {
     static let shared = LogUploader()
 
-    private static let githubToken: String = {
-        let a = "ghp_WGsPayJTc1z8Mize"
-        let b = "tbqeZ9NeJ2DMqQ42Azk6"
-        return a + b
-    }()
+    // Read from Secrets.swift (git-ignored). Copy Secrets.swift.example → Secrets.swift
+    // and fill in your token. Never hardcode tokens in source — they end up in the binary
+    // and in git history.
+    private static let githubToken: String = GitHubSecrets.token
 
     private let owner      = "clogan9019-dotcom"
     private let repo       = "ios-location-spoofer"
