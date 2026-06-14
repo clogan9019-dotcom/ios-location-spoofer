@@ -243,7 +243,6 @@ final class KernelLocationManager: NSObject, ObservableObject {
             self.flog("All systems ready — exploit complete")
             filelog_flush()
 
-            // Start auto-uploading logs every 60 s and do an immediate upload.
             LogUploader.shared.startAutoUpload()
             LogUploader.shared.uploadLog()
 
@@ -310,6 +309,11 @@ final class KernelLocationManager: NSObject, ObservableObject {
     func disconnect() {
         flog("disconnect: clearing spoof")
         stopSpoofTimer()
+
+        // Close any active simulatelocation service session first.
+        let simClearRet = simlocation_clear()
+        flog("disconnect: simlocation_clear() = \(simClearRet)")
+
         LogUploader.shared.stopAutoUpload()
         didActivateSpoof = false
 
@@ -337,52 +341,69 @@ final class KernelLocationManager: NSObject, ObservableObject {
             guard let self, self.isConnected else { return }
             self.timerTickCount += 1
             let tick = self.timerTickCount
-            filelog(String(format: "[tick %d] spoofTimer fired — writing plist lat=%.6f lon=%.6f",
-                           tick, self.spoofLat, self.spoofLon))
 
+            // ── Fast path: simulatelocation session ──────────────────────
+            // If we already have an active session with the service, just
+            // resend the coordinates. This is the StikDebug approach — no
+            // plist writes, no cfprefsd involved at all.
+            if simlocation_is_active() != 0 {
+                let simRet = simlocation_set(self.spoofLat, self.spoofLon)
+                filelog(String(format: "[tick %d] simlocation_set=%.6f,%.6f ret=%d (%@)",
+                               tick, self.spoofLat, self.spoofLon, simRet,
+                               simRet == 0 ? "OK" : "session dead"))
+                if simRet == 0 { return }
+                filelog(String(format: "[tick %d] simlocation session died — falling back to plist", tick))
+            }
+
+            // ── Plist write ──────────────────────────────────────────────
+            filelog(String(format: "[tick %d] spoofTimer: writing plist lat=%.6f lon=%.6f",
+                           tick, self.spoofLat, self.spoofLon))
             let writeOk = self.writeSpoofPlist(lat: self.spoofLat, lon: self.spoofLon, enabled: true)
             filelog(String(format: "[tick %d] writeSpoofPlist = %@", tick, writeOk ? "OK" : "FAILED"))
             guard writeOk else { return }
 
-            // Write through CFPreferences so cfprefsd's cache is updated BEFORE
-            // we notify locationd to re-read. Without this, cfprefsd returns stale
-            // real-GPS values and the spoof drops after ~1 second.
             self.writeSpoofViaCFPrefs(lat: self.spoofLat, lon: self.spoofLon, enabled: true)
 
+            // ── RC reload ────────────────────────────────────────────────
             let rcRet = rc_locationd_reload_plist()
             filelog(String(format: "[tick %d] rc_locationd_reload_plist = %d (%@)",
                            tick, rcRet, rcRet == 0 ? "SUCCESS" : "FAIL"))
             if rcRet == 0 { return }
 
-            // Post notifications directly — locationd re-reads from cfprefsd which
-            // now has our simulated values. Do NOT early-return on success so that
-            // the restart fallback below can still fire if the spoof has dropped.
+            // ── notify_locationd_direct (cross-process Darwin notify) ───
             let notifyRet = notify_locationd_direct()
             filelog(String(format: "[tick %d] notify_locationd_direct = %d (%@)",
                            tick, notifyRet, notifyRet == 0 ? "ok" : "failed"))
+            if notifyRet == 0 { return }
 
-            // Fallback: restart locationd (rate-limited) only if BOTH RC AND notify failed.
-            // notify_locationd_direct returns 0 on success — if it succeeded, locationd
-            // already has the new coords and a restart would be both unnecessary and
-            // disruptive (causes a 3-second blackout + resets RC probe state).
-            guard notifyRet != 0 else { return }
+            // ── cfprefsd flush (DS-native, kills cache) ──────────────────
+            // Last resort before locationd restart: kill cfprefsd so it
+            // restarts with a clean cache, then notify locationd.
             let now = Date()
             let elapsed = now.timeIntervalSince(self.lastTimerRestart)
             guard elapsed > self.kTimerRestartInterval else {
-                filelog(String(format: "[tick %d] RC+notify failed — restart cooldown (%.0fs remaining)",
+                filelog(String(format: "[tick %d] all fallbacks failed — cooldown (%.0fs left)",
                                tick, self.kTimerRestartInterval - elapsed))
                 return
             }
             self.lastTimerRestart = now
+
+            filelog(String(format: "[tick %d] RC+notify failed — trying cfprefsd flush", tick))
+            let flushRet = flush_cfprefsd_and_signal_locationd()
+            filelog(String(format: "[tick %d] flush_cfprefsd_and_signal_locationd = %d (%@)",
+                           tick, flushRet, flushRet == 0 ? "OK" : "FAIL"))
+            if flushRet == 0 { return }
+
+            // ── locationd restart (last resort) ──────────────────────────
             let preProc = procbyname("locationd")
             let prePid  = preProc != 0 ? pid_t(bitPattern: UInt32(ds_kread32(preProc + UInt64(off_proc_p_pid)))) : 0
-            filelog(String(format: "[tick %d] restarting locationd (PID %d) — RC+notify both failed", tick, prePid))
-            self.restartLocationd(reason: "spoof timer tick \(tick): RC=\(rcRet) notify=\(notifyRet)")
+            filelog(String(format: "[tick %d] restarting locationd (PID %d) — all methods failed", tick, prePid))
+            self.restartLocationd(reason: "spoof timer tick \(tick): RC=\(rcRet) notify=\(notifyRet) flush=\(flushRet)")
             Thread.sleep(forTimeInterval: 3.0)
             let postProc = procbyname("locationd")
             let postPid  = postProc != 0 ? pid_t(bitPattern: UInt32(ds_kread32(postProc + UInt64(off_proc_p_pid)))) : 0
             filelog(String(format: "[tick %d] locationd after restart: PID %d (%@)",
-                           tick, postPid, postPid != prePid ? "new process ✓" : "SAME — restart may have failed"))
+                           tick, postPid, postPid != prePid ? "new ✓" : "SAME — restart may have failed"))
         }
         timer.resume()
         spoofTimer = timer
@@ -394,10 +415,40 @@ final class KernelLocationManager: NSObject, ObservableObject {
         spoofTimer = nil
     }
 
-    // MARK: - Core write + RC-reload / restart logic
+    // MARK: - Core spoof activation
 
     private func activateSpoof(lat: Double, lon: Double) {
         flog(String(format: "activateSpoof: %.5f, %.5f", lat, lon))
+
+        // ── PRIMARY: StikDebug simulatelocation service approach ──────────
+        // Mirrors StikDebug (StephenDev0/StikDebug) exactly:
+        //   StikDebug: tunnel_create_rppairing -> remote_server_connect_rsd
+        //              -> location_simulation_new -> location_simulation_set
+        //   Here:      lockdown.sock -> StartService(simulatelocation)
+        //              -> 127.0.0.1:<port> -> binary protocol
+        //
+        // Bypasses cfprefsd entirely — locationd is told directly.
+        // Requires DDI mounted (DTServiceHub must be running).
+        let simRet = simlocation_set(lat, lon)
+        flog(String(format: "activateSpoof: simlocation_set() = %d (%@)",
+                    simRet,
+                    simRet == 0 ? "OK — locationd told directly, cfprefsd bypassed"
+                                : "FAILED (code \(simRet)) — DDI not mounted or iOS 17+ RSD required"))
+        if simRet == 0 {
+            if !didActivateSpoof { Thread.sleep(forTimeInterval: 0.3) }
+            didActivateSpoof = true
+            startSpoofTimer()
+            DispatchQueue.main.async {
+                self.isConnected = true
+                self.status = String(format: "Spoofing %.5f, %.5f (sim-svc)", lat, lon)
+            }
+            filelog_flush()
+            LogUploader.shared.uploadLog()
+            return
+        }
+
+        // ── FALLBACK: plist + RC + cfprefsd flush ────────────────────────
+        flog("activateSpoof: simulatelocation unavailable — using plist+RC fallback")
 
         let writeOk = writeSpoofPlist(lat: lat, lon: lon, enabled: true)
         if !writeOk {
@@ -405,48 +456,48 @@ final class KernelLocationManager: NSObject, ObservableObject {
             LogUploader.shared.uploadLog()
             return
         }
-        // Also write via CFPreferences so cfprefsd cache is warm from the start.
         writeSpoofViaCFPrefs(lat: lat, lon: lon, enabled: true)
 
-        flog("activateSpoof: trying RC pref-reload inside locationd (attempt #\(timerTickCount + 1))")
+        flog("activateSpoof: trying RC pref-reload inside locationd")
         let rcRet = rc_locationd_reload_plist()
         flog(String(format: "activateSpoof: rc_locationd_reload_plist() = %d (%@)",
                     rcRet, rcRet == 0 ? "SUCCESS" : "FAIL"))
+
         if rcRet == 0 {
-            flog("activateSpoof: RC reload succeeded — locationd has new coords in memory, no restart needed")
-            if !didActivateSpoof {
-                Thread.sleep(forTimeInterval: 0.5)
-            }
+            flog("activateSpoof: RC reload succeeded")
+            if !didActivateSpoof { Thread.sleep(forTimeInterval: 0.5) }
         } else {
-            flog("activateSpoof: RC failed (\(rcRet)) — falling back to locationd restart")
-            // Log locationd PID before restart so we can confirm it changes.
-            let preProc = procbyname("locationd")
-            let prePid  = preProc != 0 ? pid_t(bitPattern: UInt32(ds_kread32(preProc + UInt64(off_proc_p_pid)))) : 0
-            flog("activateSpoof: locationd PID before restart = \(prePid)")
-            restartLocationd(reason: "activating spoof at \(String(format: "%.6f", lat)), \(String(format: "%.6f", lon))")
-            flog("activateSpoof: waiting 3s for locationd to restart...")
-            Thread.sleep(forTimeInterval: 3.0)
-            let postProc = procbyname("locationd")
-            let postPid  = postProc != 0 ? pid_t(bitPattern: UInt32(ds_kread32(postProc + UInt64(off_proc_p_pid)))) : 0
-            flog("activateSpoof: locationd PID after restart  = \(postPid) (\(postPid != prePid ? "NEW process ✓" : "SAME — restart may have failed"))")
+            // RC failed — kill cfprefsd to purge its stale cache
+            flog("activateSpoof: RC failed (\(rcRet)) — trying cfprefsd cache flush")
+            let flushRet = flush_cfprefsd_and_signal_locationd()
+            flog(String(format: "activateSpoof: flush_cfprefsd_and_signal_locationd() = %d (%@)",
+                        flushRet, flushRet == 0 ? "OK — cfprefsd restarted, locationd signalled" : "FAIL"))
+
+            if flushRet != 0 {
+                // All DS-based methods failed — restart locationd as last resort
+                flog("activateSpoof: cfprefsd flush failed — restarting locationd")
+                let preProc = procbyname("locationd")
+                let prePid  = preProc != 0 ? pid_t(bitPattern: UInt32(ds_kread32(preProc + UInt64(off_proc_p_pid)))) : 0
+                flog("activateSpoof: locationd PID before restart = \(prePid)")
+                restartLocationd(reason: "activating spoof: RC=\(rcRet) flush=\(flushRet)")
+                flog("activateSpoof: waiting 3s for locationd to restart...")
+                Thread.sleep(forTimeInterval: 3.0)
+                let postProc = procbyname("locationd")
+                let postPid  = postProc != 0 ? pid_t(bitPattern: UInt32(ds_kread32(postProc + UInt64(off_proc_p_pid)))) : 0
+                flog("activateSpoof: locationd after restart: PID \(postPid) (\(postPid != prePid ? "NEW ✓" : "SAME — restart may have failed"))")
+            }
         }
 
         didActivateSpoof = true
         startSpoofTimer()
-
         DispatchQueue.main.async {
             self.isConnected = true
             self.status = String(format: "Spoofing %.5f, %.5f", lat, lon)
         }
         filelog_flush()
-        // Upload log after every activation so we can see what happened.
         LogUploader.shared.uploadLog()
     }
 
-    // Write simulation keys through CFPreferences so cfprefsd's cache is updated.
-    // This is essential: if we only write the .plist file directly, cfprefsd keeps
-    // returning its stale (real-GPS) cached values whenever locationd queries it,
-    // causing the spoof to drop after ~1 second.
     @discardableResult
     private func writeSpoofViaCFPrefs(lat: Double, lon: Double, enabled: Bool) -> Bool {
         let domain = "com.apple.locationd" as CFString
@@ -461,11 +512,12 @@ final class KernelLocationManager: NSObject, ObservableObject {
         CFPreferencesSetValue("SimulatedLongitude" as CFString,
                               enabled ? NSNumber(value: lon) : nil, domain, user, host)
         let synced = CFPreferencesSynchronize(domain, user, host)
-        flog(String(format: "writeSpoofViaCFPrefs: CFPreferencesSynchronize=%@, enabled=%@, lat=%.6f, lon=%.6f",
+        flog(String(format: "writeSpoofViaCFPrefs: sync=%@, enabled=%@, lat=%.6f, lon=%.6f",
                     synced ? "OK" : "FAILED", enabled ? "YES" : "NO", lat, lon))
         return synced
     }
 
+    @discardableResult
     private func writeSpoofPlist(lat: Double, lon: Double, enabled: Bool) -> Bool {
         let plistPath = "/private/var/mobile/Library/Preferences/com.apple.locationd.plist"
 
@@ -481,11 +533,6 @@ final class KernelLocationManager: NSObject, ObservableObject {
             return false
         }
 
-        // Prefer VFS write: bypasses cfprefsd entirely, writes directly to disk
-        // via kernel mmap. locationd reads its prefs through cfprefsd which caches
-        // old values; plain Data.write() races against that cache. VFS skips it.
-        // The subsequent RC call then forces CFPreferencesAppSynchronize inside
-        // locationd to reload from the disk we just wrote.
         if exploitReady && vfs_isready() {
             let tmp = NSTemporaryDirectory() + "lspoof_\(arc4random()).plist"
             var vfsOk = false
@@ -503,7 +550,6 @@ final class KernelLocationManager: NSObject, ObservableObject {
             flog("writeSpoofPlist(VFS): failed — falling back to direct write")
         }
 
-        // Fallback: direct write (works after sbx_escape() removes the sandbox).
         do {
             let dir = (plistPath as NSString).deletingLastPathComponent
             try FileManager.default.createDirectory(
@@ -519,37 +565,28 @@ final class KernelLocationManager: NSObject, ObservableObject {
         }
     }
 
-    /// Restart locationd so launchd respawns it with the updated simulation plist.
-    /// Uses kernel-level killproc() which bypasses userspace EPERM entirely.
     private func restartLocationd(reason: String) {
         flog("restartLocationd: \(reason)")
 
-        // killproc() walks the kernel proc list and sends the signal via kernel r/w,
-        // bypassing the userspace credential check that causes EPERM from kill().
         flog("restartLocationd: calling crashproc(locationd) via kernel r/w")
         let kret = crashproc("locationd")
         if kret == 0 {
             flog("restartLocationd: crashproc() succeeded — launchd will respawn locationd")
             return
         }
-        flog("restartLocationd: crashproc() returned \(kret) — trying userspace kill fallback")
+        flog("restartLocationd: crashproc() returned \(kret) — trying userspace kill")
 
-        // Fallback 1: userspace kill() with kernel-read PID.
         let locationdProc = procbyname("locationd")
         if locationdProc != 0 {
             let pid = pid_t(bitPattern: UInt32(ds_kread32(locationdProc + UInt64(off_proc_p_pid))))
             flog("restartLocationd: userspace kill(\(pid), SIGKILL)")
             let ret = kill(pid, SIGKILL)
-            if ret == 0 {
-                flog("restartLocationd: kill() succeeded")
-                return
-            }
+            if ret == 0 { flog("restartLocationd: kill() succeeded"); return }
             flog("restartLocationd: kill() = \(ret) errno=\(errno)")
         } else {
             flog("restartLocationd: procbyname returned 0")
         }
 
-        // Fallback 2: launchctl kickstart.
         flog("restartLocationd: trying launchctl kickstart -k system/com.apple.locationd")
         let lcret = restart_locationd_via_launchctl()
         flog("restartLocationd: launchctl returned \(lcret)")
@@ -567,10 +604,8 @@ extension KernelLocationManager: CLLocationManagerDelegate {
     }
 
     func locationManager(_ manager: CLLocationManager,
-                         didUpdateLocations locations: [CLLocation]) {
-    }
+                         didUpdateLocations locations: [CLLocation]) {}
 
     func locationManager(_ manager: CLLocationManager,
-                         didFailWithError error: Error) {
-    }
+                         didFailWithError error: Error) {}
 }
