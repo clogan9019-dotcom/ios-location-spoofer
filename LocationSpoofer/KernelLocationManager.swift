@@ -469,7 +469,7 @@ final class KernelLocationManager: NSObject, ObservableObject {
             "SimulatedLatitude":        lat,
             "SimulatedLongitude":       lon,
             "SimulationEnabled":        enabled,
-            "LocationSimulatorEnabled": enabled   // iOS 18 variant key
+            "LocationSimulatorEnabled": enabled
         ]
         guard let data = try? PropertyListSerialization.data(
             fromPropertyList: dict, format: .binary, options: 0) else {
@@ -477,18 +477,40 @@ final class KernelLocationManager: NSObject, ObservableObject {
             return false
         }
 
+        // Prefer VFS write: bypasses cfprefsd entirely, writes directly to disk
+        // via kernel mmap. locationd reads its prefs through cfprefsd which caches
+        // old values; plain Data.write() races against that cache. VFS skips it.
+        // The subsequent RC call then forces CFPreferencesAppSynchronize inside
+        // locationd to reload from the disk we just wrote.
+        if exploitReady && vfs_isready() {
+            let tmp = NSTemporaryDirectory() + "lspoof_\(arc4random()).plist"
+            var vfsOk = false
+            do {
+                try data.write(to: URL(fileURLWithPath: tmp))
+                let r = vfs_overwritefile(plistPath, tmp)
+                vfsOk = (r == 0)
+                flog(String(format: "writeSpoofPlist(VFS): r=%d (%@) lat=%.6f lon=%.6f",
+                            r, vfsOk ? "OK" : "FAIL", lat, lon))
+            } catch {
+                flog("writeSpoofPlist(VFS): temp write failed: \(error.localizedDescription)")
+            }
+            try? FileManager.default.removeItem(atPath: tmp)
+            if vfsOk { return true }
+            flog("writeSpoofPlist(VFS): failed — falling back to direct write")
+        }
+
+        // Fallback: direct write (works after sbx_escape() removes the sandbox).
         do {
             let dir = (plistPath as NSString).deletingLastPathComponent
             try FileManager.default.createDirectory(
                 atPath: dir, withIntermediateDirectories: true, attributes: nil)
             try data.write(to: URL(fileURLWithPath: plistPath), options: [.atomic])
-            // Verify the write landed on disk — read back and check size.
             let onDiskSize = (try? FileManager.default.attributesOfItem(atPath: plistPath)[.size] as? Int) ?? -1
-            flog(String(format: "writeSpoofPlist: wrote %d bytes to %@ (enabled=%@, lat=%.6f, lon=%.6f)",
-                        onDiskSize, plistPath, enabled ? "YES" : "NO", lat, lon))
+            flog(String(format: "writeSpoofPlist(direct): wrote %d bytes enabled=%@ lat=%.6f lon=%.6f",
+                        onDiskSize, enabled ? "YES" : "NO", lat, lon))
             return true
         } catch {
-            flog("writeSpoofPlist: FAILED — \(error.localizedDescription) — path=\(plistPath)")
+            flog("writeSpoofPlist: FAILED — \(error.localizedDescription)")
             return false
         }
     }
