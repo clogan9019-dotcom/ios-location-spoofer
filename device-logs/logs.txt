@@ -1,1 +1,28 @@
 [15:28:33] [tick 1] spoofTimer fired — writing plist lat=40.703665 lon=-74.005444
+[15:28:33] writeSpoofPlist(VFS): r=0 (OK) lat=40.703665 lon=-74.005444
+[15:28:33] [tick 1] writeSpoofPlist = OK
+[15:28:33] writeSpoofViaCFPrefs: CFPreferencesSynchronize=OK, enabled=YES, lat=40.703665, lon=-74.005444
+[15:28:33] [rc-preflight] proc=0xffffffe1fabd2c30 task=0xffffffe1fabd3370 firstThread=0xffffffe2dba82950
+[15:28:33] [rc-preflight] excGuard[0x624]=0x008ec00000000099 off_task_threads_next=0x50 off_task_task_exc_guard=0x624
+[15:28:33] [rc-preflight] thread chain: t0=0xffffffe2dba82950 t1=0xffffffe2dba83870 t2=0xffffffe2dba80b10
+[15:28:33] [rc-preflight] t0 tro=0xffffffdef815bce8 tro->task=0xffffffe1fabd3370 (expected task=0xffffffe1fabd3370, match=1)
+[15:28:33] [rc] rc_locationd_reload_plist: trying RemoteCall bypass=YES
+[15:28:41] [rc] RemoteCall bypass=YES FAILED: RC-step-15: probePid=0 (first RC call failed) — trying bypass=NO
+[15:28:48] [rc] RemoteCall FAILED BOTH MODES: RC-step-15: probePid=0 (first RC call failed) — RC unavailable
+[15:28:48] [tick 1] rc_locationd_reload_plist = -1 (FAIL)
+[15:28:48] [tick 1] notify_locationd_direct = 0 (ok)
+[15:28:48] [tick 1] restarting locationd (PID 2681) — RC+notify both failed
+[15:28:48] restartLocationd: spoof timer tick 1: RC=-1 notify=0
+[15:28:48] restartLocationd: calling crashproc(locationd) via kernel r/w
+[15:28:48] restartLocationd: crashproc() succeeded — launchd will respawn locationd
+[15:28:51] [tick 1] locationd after restart: PID 2686 (new process ✓)
+[15:28:51] [tick 2] spoofTimer fired — writing plist lat=40.703665 lon=-74.005444
+[15:28:51] writeSpoofPlist(VFS): r=0 (OK) lat=40.703665 lon=-74.005444
+[15:28:51] [tick 2] writeSpoofPlist = OK
+[15:28:51] writeSpoofViaCFPrefs: CFPreferencesSynchronize=OK, enabled=YES, lat=40.703665, lon=-74.005444
+[15:28:51] [rc-preflight] proc=0xffffffe1fabe6410 task=0xffffffe1fabe6b50 firstThread=0xffffffe2ddfc5a30
+[15:28:51] [rc-preflight] excGuard[0x624]=0x0080400000000099 off_task_threads_next=0x50 off_task_task_exc_guard=0x624
+[15:28:51] [rc-preflight] thread chain: t0=0xffffffe2ddfc5a30 t1=0xffffffe2dd2052a0 t2=0xffffffe2ddb24b10
+[15:28:51] [rc-preflight] t0 tro=0xffffffdef8025e50 tro->task=0xffffffe1fabe6b50 (expected task=0xffffffe1fabe6b50, match=1)
+[15:28:51] [rc] rc_locationd_reload_plist: trying RemoteCall bypass=YES
+[15:28:58] [rc] RemoteCall bypass=YES FAILED: RC-step-15: probePid=0 (first RC call failed) — trying bypass=NO
