@@ -14,6 +14,7 @@ BB0001000000000000000060 /* NetworkScanner.swift in Sources */ = {isa = PBXBuild
 BB0001000000000000000061 /* NetworkScannerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0000000000000000000061 /* NetworkScannerView.swift */; };
 BB0001000000000000000070 /* LogUploader.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0000000000000000000070 /* LogUploader.swift */; };
 		BB0001000000000000000071 /* Secrets.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0000000000000000000071 /* Secrets.swift */; };
+BB0001000000000000000072 /* SimulateLocationManager.m in Sources */ = {isa = PBXBuildFile; fileRef = BB0000000000000000000072 /* SimulateLocationManager.m */; };
 BB0001000000000000000004 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = BB0000000000000000000004 /* Assets.xcassets */; };
 BB0001000000000000000010 /* darksword.m in Sources */ = {isa = PBXBuildFile; fileRef = BB0000000000000000000010 /* darksword.m */; };
 BB0001000000000000000011 /* offsets.m in Sources */ = {isa = PBXBuildFile; fileRef = BB0000000000000000000011 /* offsets.m */; };
@@ -91,6 +92,8 @@ BB000000000000000000051H /* xpf.h */ = {isa = PBXFileReference; lastKnownFileTyp
 BB000000000000000000052H /* fileport.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = fileport.h; sourceTree = "<group>"; };
 BB000000000000000000026H /* locationd.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = locationd.h; sourceTree = "<group>"; };
 BB0000000000000000000026 /* locationd.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = locationd.m; sourceTree = "<group>"; };
+BB000000000000000000072H /* SimulateLocationManager.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = SimulateLocationManager.h; sourceTree = "<group>"; };
+BB0000000000000000000072 /* SimulateLocationManager.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = SimulateLocationManager.m; sourceTree = "<group>"; };
 BB000000000000000000060H /* FileLogger.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = FileLogger.h; sourceTree = "<group>"; };
 BB0000000000000000000050 /* FileLogger.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = FileLogger.m; sourceTree = "<group>"; };
 BB000000000000000000061H /* CrashGuard.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = CrashGuard.h; sourceTree = "<group>"; };
@@ -200,6 +203,8 @@ BB0000000000000000000024 /* rc.m */,
 BB000000000000000000025H /* xpaci.h */,
 BB000000000000000000026H /* locationd.h */,
 BB0000000000000000000026 /* locationd.m */,
+BB000000000000000000072H /* SimulateLocationManager.h */,
+BB0000000000000000000072 /* SimulateLocationManager.m */,
 );
 path = pe;
 sourceTree = "<group>";
@@ -336,6 +341,7 @@ BB0001000000000000000033 /* pac.m in Sources */,
 BB0001000000000000000034 /* thread.m in Sources */,
 BB0001000000000000000035 /* findcachedataoff.m in Sources */,
 BB0001000000000000000026 /* locationd.m in Sources */,
+BB0001000000000000000072 /* SimulateLocationManager.m in Sources */,
 BB0001000000000000000050 /* FileLogger.m in Sources */,
 BB0001000000000000000051 /* CrashGuard.m in Sources */,
 );
