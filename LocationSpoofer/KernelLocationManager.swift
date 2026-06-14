@@ -361,7 +361,11 @@ final class KernelLocationManager: NSObject, ObservableObject {
             filelog(String(format: "[tick %d] notify_locationd_direct = %d (%@)",
                            tick, notifyRet, notifyRet == 0 ? "ok" : "failed"))
 
-            // Fallback: restart locationd (rate-limited) if both RC and notify failed.
+            // Fallback: restart locationd (rate-limited) only if BOTH RC AND notify failed.
+            // notify_locationd_direct returns 0 on success — if it succeeded, locationd
+            // already has the new coords and a restart would be both unnecessary and
+            // disruptive (causes a 3-second blackout + resets RC probe state).
+            guard notifyRet != 0 else { return }
             let now = Date()
             let elapsed = now.timeIntervalSince(self.lastTimerRestart)
             guard elapsed > self.kTimerRestartInterval else {
