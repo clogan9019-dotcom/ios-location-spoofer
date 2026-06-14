@@ -1,10 +1,11 @@
-[15:28:13] applySpoof: 40.70366, -74.00544
-[15:28:13] activateSpoof: 40.70366, -74.00544
-[15:28:13] writeSpoofPlist(VFS): r=0 (OK) lat=40.703665 lon=-74.005444
-[15:28:13] writeSpoofViaCFPrefs: CFPreferencesSynchronize=OK, enabled=YES, lat=40.703665, lon=-74.005444
-[15:28:13] activateSpoof: trying RC pref-reload inside locationd (attempt #1)
-[15:28:13] [rc-preflight] proc=0xffffffe1f8eaf208 task=0xffffffe1f8eaf948 firstThread=0xffffffe2ddca5a30
-[15:28:13] [rc-preflight] excGuard[0x624]=0x0219400000000099 off_task_threads_next=0x50 off_task_task_exc_guard=0x624
-[15:28:13] [rc-preflight] thread chain: t0=0xffffffe2ddca5a30 t1=0xffffffe2dd8430e0 t2=0xffffffe2dcb51a30
-[15:28:13] [rc-preflight] t0 tro=0xffffffdef8024ab8 tro->task=0xffffffe1f8eaf948 (expected task=0xffffffe1f8eaf948, match=1)
-[15:28:13] [rc] rc_locationd_reload_plist: trying RemoteCall bypass=YES
+[15:28:20] [rc] RemoteCall bypass=YES FAILED: RC-step-15: probePid=0 (first RC call failed) — trying bypass=NO
+[15:28:27] [rc] RemoteCall FAILED BOTH MODES: RC-step-15: probePid=0 (first RC call failed) — RC unavailable
+[15:28:27] activateSpoof: rc_locationd_reload_plist() = -1 (FAIL)
+[15:28:27] activateSpoof: RC failed (-1) — falling back to locationd restart
+[15:28:27] activateSpoof: locationd PID before restart = 2671
+[15:28:27] restartLocationd: activating spoof at 40.703665, -74.005444
+[15:28:27] restartLocationd: calling crashproc(locationd) via kernel r/w
+[15:28:27] restartLocationd: crashproc() succeeded — launchd will respawn locationd
+[15:28:27] activateSpoof: waiting 3s for locationd to restart...
+[15:28:30] activateSpoof: locationd PID after restart  = 2673 (NEW process ✓)
+[15:28:30] spoofTimer: started (interval 3s)
