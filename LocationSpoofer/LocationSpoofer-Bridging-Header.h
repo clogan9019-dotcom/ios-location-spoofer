@@ -18,6 +18,7 @@
 #include "kexploit/pe/xpaci.h"
 #include "kexploit/pe/locationd.h"
 #include "kexploit/pe/SimulateLocationManager.h"
+#include "kexploit/pe/ddi_mount.h"
 #include "kexploit/TaskRop/RemoteCall.h"
 #include "kexploit/TaskRop/vm.h"
 #include "kexploit/TaskRop/exc.h"
