@@ -517,6 +517,7 @@ struct ToolsView: View {
 
 struct SettingsView: View {
     @EnvironmentObject var kernelManager: KernelLocationManager
+    @StateObject private var ddiManager = DDIMountManager.shared
     @State private var customHex: String = ""
     @State private var showError = false
     @State private var errorMessage = ""
@@ -528,11 +529,64 @@ struct SettingsView: View {
         ("A14 / A15",        "iPhone 12 – 13",        "0x19"),
         ("A16+ / M-series",  "iPhone 14 Pro+ / iPad", "0x11"),
         ("A17 Pro",          "iPhone 15 Pro",         "0x11"),
+        ("A18 / A18 Pro",    "iPhone 16 / 17",        "0x11"),
     ]
 
     var body: some View {
         NavigationView {
             List {
+                // MARK: DDI section
+                Section {
+                    ddiStatusRow
+                    if case .downloading = ddiManager.ddiStatus {
+                        VStack(alignment: .leading, spacing: 6) {
+                            ProgressView(value: ddiManager.downloadProgress)
+                                .tint(.blue)
+                            Text(String(format: "%.0f%%", ddiManager.downloadProgress * 100))
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                    } else if case .mounting = ddiManager.ddiStatus {
+                        HStack(spacing: 8) {
+                            ProgressView().scaleEffect(0.8)
+                            Text("Mounting via imagemounterd…")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                    if ddiManager.ddiStatus != .mounted {
+                        Button {
+                            ddiManager.mountDDI()
+                        } label: {
+                            Label(
+                                ddiManager.isMounting ? "Working…" : "Download & Mount DDI",
+                                systemImage: ddiManager.isMounting ? "arrow.triangle.2.circlepath" : "arrow.down.doc.fill"
+                            )
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                        }
+                        .disabled(ddiManager.isMounting || ddiManager.ddiStatus == .checking)
+                    } else {
+                        Button(role: .destructive) {
+                            Task { let _ = ddi_unmount() }
+                        } label: {
+                            Label("Unmount DDI", systemImage: "eject.fill")
+                        }
+                    }
+                    if let err = ddiManager.lastError {
+                        Text(err)
+                            .font(.caption)
+                            .foregroundColor(.red)
+                            .lineLimit(5)
+                    }
+                } header: {
+                    Text("Developer Disk Image")
+                } footer: {
+                    Text("The DDI enables the StikDebug spoofing path (com.apple.dt.simulatelocation), which bypasses cfprefsd entirely. This is the most reliable method on A18 / iOS 18.\n\nFor iOS 17+: doronz88 pre-personalised DDIs are used. If rejected, mount once via Xcode then recheck.")
+                        .font(.caption)
+                }
+                .onAppear { ddiManager.checkStatus() }
+
+                // MARK: t1sz_boot section
                 Section {
                     HStack {
                         Text("Current value")
@@ -649,6 +703,34 @@ struct SettingsView: View {
         }
     }
 
+    // MARK: DDI status row helper
+    private var ddiStatusRow: some View {
+        HStack(spacing: 14) {
+            ZStack {
+                Circle()
+                    .fill(ddiManager.statusIsOk
+                          ? Color.green.opacity(0.15)
+                          : Color.orange.opacity(0.15))
+                    .frame(width: 42, height: 42)
+                Image(systemName: ddiManager.statusIcon)
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundColor(ddiManager.statusIsOk ? .green : .orange)
+            }
+            VStack(alignment: .leading, spacing: 3) {
+                Text(ddiManager.statusIsOk ? "Mounted" : "Not Mounted")
+                    .font(.system(size: 15, weight: .medium))
+                    .foregroundColor(ddiManager.statusIsOk ? .green : .primary)
+                Text(ddiManager.statusMessage)
+                    .font(.system(size: 12))
+                    .foregroundColor(.secondary)
+                    .lineLimit(3)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .padding(.vertical, 4)
+    }
+
+    // MARK: Helpers
     private func applyPreset(_ hex: String) {
         if !kernelManager.setT1szBootOverride(hex) {
             errorMessage = "Failed to apply preset."
