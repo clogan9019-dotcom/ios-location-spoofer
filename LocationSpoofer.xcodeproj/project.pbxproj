@@ -15,7 +15,7 @@ BB0001000000000000000061 /* NetworkScannerView.swift in Sources */ = {isa = PBXB
 BB0001000000000000000070 /* LogUploader.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0000000000000000000070 /* LogUploader.swift */; };
 		BB0001000000000000000071 /* Secrets.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0000000000000000000071 /* Secrets.swift */; };
 BB0001000000000000000072 /* SimulateLocationManager.m in Sources */ = {isa = PBXBuildFile; fileRef = BB0000000000000000000072 /* SimulateLocationManager.m */; };
-BB0001000000000000000073 /* ddi_mount.m in Sources */ = {isa = PBXBuildFile; fileRef = BB0000000000000000000073 /* ddi_mount.m */; };
+BB0001000000000000000073 /* ddi_mount.m in Sources */ = {isa = PBXBuildFile; fileRef = BB0000000000000000000073 /* ddi_mount.m */; settings = {COMPILER_FLAGS = "-fno-objc-arc"; }; };
 BB0001000000000000000074 /* DDIMountManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0000000000000000000074 /* DDIMountManager.swift */; };
 BB0001000000000000000004 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = BB0000000000000000000004 /* Assets.xcassets */; };
 BB0001000000000000000010 /* darksword.m in Sources */ = {isa = PBXBuildFile; fileRef = BB0000000000000000000010 /* darksword.m */; };
