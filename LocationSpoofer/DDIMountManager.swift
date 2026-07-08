@@ -25,6 +25,11 @@
 import Foundation
 import UIKit
 
+// Mirrors the ddi_mount_status_t anonymous enum in ddi_mount.h.
+private let kDDIStatusUnknown: Int32     = 0
+private let kDDIStatusNotMounted: Int32 = 1
+private let kDDIStatusMounted: Int32    = 2
+
 @MainActor
 final class DDIMountManager: ObservableObject {
 
@@ -94,7 +99,7 @@ final class DDIMountManager: ObservableObject {
             guard let self else { return }
             let xpcStatus = ddi_check_status()
             let dtProc    = procbyname("DTServiceHub")
-            let mounted   = xpcStatus == DDI_STATUS_MOUNTED || dtProc != 0
+            let mounted   = xpcStatus == kDDIStatusMounted || dtProc != 0
             filelog(String(format: "[DDI] check: xpc=%d DTServiceHub=%@",
                            xpcStatus.rawValue, dtProc != 0 ? "running" : "absent"))
             await MainActor.run {
@@ -128,7 +133,7 @@ final class DDIMountManager: ObservableObject {
 
     private func runMountFlow() async {
         // Check if already mounted
-        if ddi_check_status() == DDI_STATUS_MOUNTED || procbyname("DTServiceHub") != 0 {
+        if ddi_check_status() == kDDIStatusMounted || procbyname("DTServiceHub") != 0 {
             await update(.mounted, "DDI already mounted — ready")
             return
         }
