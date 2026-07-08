@@ -44,9 +44,50 @@ jobs:
           fi
           xcodebuild -version
 
-      - name: Install ldid & cctools (for install_name_tool)
+      - name: Install ldid (for ad-hoc signing with entitlements)
         run: |
-          brew install ldid ld64 cctools || true
+          # install_name_tool ships with Xcode Command Line Tools (already on PATH).
+          # Install ldid: try brew first, then fall back to a prebuilt binary,
+          # then fall back to building from source.
+          set +e
+          brew install ldid 2>&1 | tail -5
+          set -e
+          if command -v ldid >/dev/null 2>&1; then
+            echo "ldid installed via brew:"
+            ldid -h 2>&1 | head -3
+            exit 0
+          fi
+          echo "Brew install didn't put ldid on PATH; fetching prebuilt binary."
+          mkdir -p /tmp/ldid-bin
+          LDID_URL=""
+          for url in \
+            "https://github.com/ProcursusTeam/ldid/releases/latest/download/ldid_macosx_universal.zip" \
+            "https://github.com/ProcursusTeam/ldid/releases/download/v2.1.5-procursus7/ldid_macosx_universal.zip" \
+            "https://github.com/xerub/ldid/releases/download/v2.1.5/ldid"; do
+            echo "Trying $url"
+            if [[ "$url" == *.zip ]]; then
+              if curl -fsSL -o /tmp/ldid-bin/ldid.zip "$url" && unzip -o /tmp/ldid-bin/ldid.zip -d /tmp/ldid-bin >/dev/null 2>&1; then
+                chmod +x /tmp/ldid-bin/ldid 2>/dev/null || true
+                if [ -x /tmp/ldid-bin/ldid ]; then
+                  sudo cp /tmp/ldid-bin/ldid /usr/local/bin/ldid
+                  break
+                fi
+              fi
+            else
+              if curl -fsSL -o /tmp/ldid-bin/ldid "$url"; then
+                chmod +x /tmp/ldid-bin/ldid
+                sudo cp /tmp/ldid-bin/ldid /usr/local/bin/ldid
+                break
+              fi
+            fi
+          done
+          if ! command -v ldid >/dev/null 2>&1; then
+            echo "Could not install ldid; will fall back to codesign ad-hoc signing in the sign step."
+            echo "LDID_METHOD=codesign" >> $GITHUB_ENV
+          else
+            echo "ldid ready:"
+            ldid -h 2>&1 | head -3
+          fi
 
       - name: Fix dylib install names (embed at @executable_path/Frameworks)
         run: |
@@ -76,8 +117,9 @@ jobs:
             CLANG_ENABLE_MODULES=YES
 
 
-      - name: Export and sign IPA with ldid
+      - name: Export and sign IPA
         run: |
+          set -e
           mkdir -p "$RUNNER_TEMP/ipa"
           APP_PATH=$(find "$RUNNER_TEMP/LocationSpoofer.xcarchive" -name "*.app" | head -1)
           if [ -z "$APP_PATH" ]; then
@@ -99,12 +141,39 @@ jobs:
           fi
 
           BINARY="$RUNNER_TEMP/ipa/Payload/LocationSpoofer.app/LocationSpoofer"
-          echo "Signing binary with ldid: $BINARY"
-          ldid -SLocationSpoofer/LocationSpoofer.entitlements "$BINARY"
-          echo "ldid signing complete"
+          ENTITLEMENTS="$GITHUB_WORKSPACE/LocationSpoofer/LocationSpoofer.entitlements"
+          echo "Signing binary: $BINARY"
+          echo "Entitlements file: $ENTITLEMENTS"
+          ls -l "$ENTITLEMENTS"
+
+          # Sign embedded dylibs first (ad-hoc), then the main binary with entitlements.
+          if [ -d "$FRAMEWORKS_DIR" ]; then
+            for dylib in "$FRAMEWORKS_DIR"/*.dylib; do
+              echo "Ad-hoc signing dylib: $dylib"
+              if command -v ldid >/dev/null 2>&1; then
+                ldid -S "$dylib"
+              else
+                codesign --force --sign - --timestamp=none "$dylib"
+              fi
+            done
+          fi
+
+          if command -v ldid >/dev/null 2>&1; then
+            echo "Using ldid to inject entitlements"
+            ldid -S"$ENTITLEMENTS" "$BINARY"
+          else
+            echo "Using codesign (ad-hoc) with entitlements"
+            # ldid-style .entitlements is an XML plist; codesign accepts it directly.
+            codesign --force --sign - --timestamp=none --entitlements "$ENTITLEMENTS" "$BINARY"
+            # Re-sign any app extension / framework bundles inside .app/PlugIns or Frameworks
+            find "$RUNNER_TEMP/ipa/Payload/LocationSpoofer.app" -name "*.appex" -o -name "*.framework" -o -name "*.dylib" 2>/dev/null | while read item; do
+              codesign --force --sign - --timestamp=none "$item" || true
+            done
+          fi
+          echo "Signing complete"
 
           cd "$RUNNER_TEMP/ipa"
-          zip -r "$RUNNER_TEMP/LocationSpoofer.ipa" Payload
+          zip -qr "$RUNNER_TEMP/LocationSpoofer.ipa" Payload
           echo "IPA created successfully"
           ls -lh "$RUNNER_TEMP/LocationSpoofer.ipa"
 
