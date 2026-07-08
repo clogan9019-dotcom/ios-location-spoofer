@@ -269,7 +269,7 @@ struct NetworkScannerView: View {
                         .padding(.vertical, 8)
                     }
                     .frame(maxHeight: 180)
-                    .onChange(of: scanner.logLines.count) { _ in
+                    .onChange(of: scanner.logLines.count) { _, _ in
                         if let last = scanner.logLines.indices.last {
                             withAnimation { proxy.scrollTo(last, anchor: .bottom) }
                         }

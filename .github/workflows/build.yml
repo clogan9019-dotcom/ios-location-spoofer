@@ -27,13 +27,29 @@ jobs:
           cp /tmp/ChOma/src/*.h LocationSpoofer/headers/
 
       - name: Select Xcode
-        run: sudo xcode-select -s /Applications/Xcode_16.2.app/Contents/Developer
+        run: |
+          # macos-14 images ship with multiple Xcodes; pick any 16.x that exists.
+          if [ -d /Applications/Xcode_16.2.app ]; then
+            sudo xcode-select -s /Applications/Xcode_16.2.app/Contents/Developer
+          elif [ -d /Applications/Xcode_16.1.app ]; then
+            sudo xcode-select -s /Applications/Xcode_16.1.app/Contents/Developer
+          elif [ -d /Applications/Xcode.app ]; then
+            sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
+          fi
+          xcodebuild -version
 
-      - name: Show Xcode version
-        run: xcodebuild -version
+      - name: Install ldid & cctools (for install_name_tool)
+        run: |
+          brew install ldid ld64 cctools || true
 
-      - name: Install ldid
-        run: brew install ldid
+      - name: Fix dylib install names (embed at @executable_path/Frameworks)
+        run: |
+          DYLIB_DIR="$GITHUB_WORKSPACE/LocationSpoofer/lib"
+          for dylib in "$DYLIB_DIR"/*.dylib; do
+            name=$(basename "$dylib")
+            install_name_tool -id "@executable_path/Frameworks/$name" "$dylib" || true
+          done
+          otool -L "$DYLIB_DIR"/*.dylib || true
 
       - name: Build Archive (unsigned)
         run: |
@@ -46,8 +62,12 @@ jobs:
             CODE_SIGN_IDENTITY="" \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_ENTITLEMENTS="" \
             DEVELOPMENT_TEAM="" \
+            ENABLE_BITCODE=NO \
             LIBRARY_SEARCH_PATHS="$GITHUB_WORKSPACE/LocationSpoofer/lib" \
+            HEADER_SEARCH_PATHS="$GITHUB_WORKSPACE/LocationSpoofer/headers $GITHUB_WORKSPACE/LocationSpoofer/kexploit $GITHUB_WORKSPACE/LocationSpoofer/kexploit/pe $GITHUB_WORKSPACE/LocationSpoofer/kexploit/TaskRop" \
+            CLANG_ENABLE_MODULES=YES
 
 
       - name: Export and sign IPA with ldid
@@ -62,6 +82,15 @@ jobs:
           echo "Found app: $APP_PATH"
           mkdir -p "$RUNNER_TEMP/ipa/Payload"
           cp -r "$APP_PATH" "$RUNNER_TEMP/ipa/Payload/"
+
+          # Make sure embedded dylibs have correct install-name/load-commands for @executable_path/Frameworks
+          FRAMEWORKS_DIR="$RUNNER_TEMP/ipa/Payload/LocationSpoofer.app/Frameworks"
+          if [ -d "$FRAMEWORKS_DIR" ]; then
+            for dylib in "$FRAMEWORKS_DIR"/*.dylib; do
+              name=$(basename "$dylib")
+              install_name_tool -id "@executable_path/Frameworks/$name" "$dylib" || true
+            done
+          fi
 
           BINARY="$RUNNER_TEMP/ipa/Payload/LocationSpoofer.app/LocationSpoofer"
           echo "Signing binary with ldid: $BINARY"

@@ -229,12 +229,12 @@ final class KernelLocationManager: NSObject, ObservableObject {
 
             self.flog("Escaping sandbox...")
             DispatchQueue.main.async { self.status = "Escaping sandbox..." }
-            sbx_setlogcallback { msg in
+            sbx_setlogcallback({ (msg: UnsafePointer<CChar>?) -> Void in
                 guard let msg else { return }
                 let s = String(cString: msg)
                 filelog("[sbx] " + s)
                 KernelLocationManager.shared.appendLog("[sbx] " + s)
-            }
+            })
             let selfProc = ds_get_our_proc()
             let sbxRet = sbx_escape(selfProc)
             self.flog("sbx_escape() = \(sbxRet == 0 ? "ok — sandbox removed" : "failed (\(sbxRet))")")
@@ -271,9 +271,12 @@ final class KernelLocationManager: NSObject, ObservableObject {
         UserDefaults.standard.set(lat,  forKey: kLastLat)
         UserDefaults.standard.set(lon,  forKey: kLastLon)
         UserDefaults.standard.set(true, forKey: kWasConnected)
+
+        spoofLat = lat
+        spoofLon = lon
+
         if exploitReady {
-            spoofLat = lat
-            spoofLon = lon
+            flog("connect: kernel ready — activating spoof immediately")
             spoofQueue.async { self.activateSpoof(lat: lat, lon: lon) }
         } else {
             flog("connect: kernel not ready, running exploit first")

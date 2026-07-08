@@ -10,7 +10,7 @@ struct LocationSpooferApp: App {
             ContentView()
                 .environmentObject(kernelManager)
         }
-        .onChange(of: scenePhase) { phase in
+        .onChange(of: scenePhase) { _, phase in
             if phase == .background {
                 // Upload log whenever the app is sent to the background.
                 LogUploader.shared.uploadLog()

@@ -24,8 +24,21 @@
         <true/>
         <key>NSLocationWhenInUseUsageDescription</key>
         <string>Needed to display your current location on the map.</string>
+        <key>NSLocationAlwaysUsageDescription</key>
+        <string>Keeps location spoofing active in the background while the screen is off.</string>
         <key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
         <string>Keeps location spoofing active in the background while the screen is off.</string>
+        <key>NSLocalNetworkUsageDescription</key>
+        <string>Used by the built-in network scanner to probe hosts on your LAN.</string>
+        <key>NSBonjourServices</key>
+        <array/>
+        <key>NSAppTransportSecurity</key>
+        <dict>
+                <key>NSAllowsArbitraryLoads</key>
+                <true/>
+                <key>NSAllowsLocalNetworking</key>
+                <true/>
+        </dict>
         <key>UIBackgroundModes</key>
         <array>
                 <string>location</string>

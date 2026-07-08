@@ -441,7 +441,12 @@ Foundation,
 IOSurface,
 "-framework",
 CoreFoundation,
-"-lbsm",
+"-framework",
+Network,
+"-framework",
+Security,
+"-lcompression",
+"-lz",
 );
 PRODUCT_BUNDLE_IDENTIFIER = com.personal.locationspoofer;
 PRODUCT_NAME = "$(TARGET_NAME)";
@@ -490,7 +495,12 @@ Foundation,
 IOSurface,
 "-framework",
 CoreFoundation,
-"-lbsm",
+"-framework",
+Network,
+"-framework",
+Security,
+"-lcompression",
+"-lz",
 );
 PRODUCT_BUNDLE_IDENTIFIER = com.personal.locationspoofer;
 PRODUCT_NAME = "$(TARGET_NAME)";

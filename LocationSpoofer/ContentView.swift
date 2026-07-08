@@ -264,7 +264,7 @@ struct LogsView: View {
                     .padding(.vertical, 8)
                 }
                 .background(Color(.systemBackground))
-                .onChange(of: kernelManager.logs.count) { _ in
+                .onChange(of: kernelManager.logs.count) { _, _ in
                     if autoScroll, let last = kernelManager.logs.indices.last {
                         withAnimation { proxy.scrollTo(last, anchor: .bottom) }
                     }
@@ -391,7 +391,7 @@ struct ToolsView: View {
                     .padding(.bottom, 20)
             }
         }
-        .onChange(of: searchText) { newValue in
+        .onChange(of: searchText) { _, newValue in
             locationSearch.search(query: newValue)
             showSuggestions = !newValue.isEmpty
         }

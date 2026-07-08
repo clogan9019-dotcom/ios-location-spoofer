@@ -238,21 +238,40 @@ final class DDIMountManager: ObservableObject {
         guard let http = response as? HTTPURLResponse, http.statusCode == 200 else {
             throw URLError(.badServerResponse)
         }
-        let total = Double(response.expectedContentLength).clamped(to: 1...Double.greatestFiniteMagnitude)
+        let expected = response.expectedContentLength
+        let total: Double = (expected > 0) ? Double(expected) : Double.greatestFiniteMagnitude
+
         FileManager.default.createFile(atPath: path, contents: nil)
         let fh = try FileHandle(forWritingTo: URL(fileURLWithPath: path))
         defer { try? fh.close() }
-        var buf = Data(capacity: 65536)
+
+        // Manual chunking — avoids reliance on AsyncSequence.chunks(ofCount:)
+        // which is only available in the iOS 18 / Xcode 16 SDKs.
+        let chunkSize = 64 * 1024
+        var buf = Data(capacity: chunkSize)
         var got: Double = 0
+        var reportedPct: Double = pStart
+
         for try await byte in asyncBytes {
             buf.append(byte)
-            if buf.count >= 65536 {
-                fh.write(buf); got += Double(buf.count); buf.removeAll(keepingCapacity: true)
-                let p = pStart + (got / total) * (pEnd - pStart)
-                await MainActor.run { self.downloadProgress = p }
+            if buf.count >= chunkSize {
+                fh.write(buf)
+                got += Double(buf.count)
+                buf.removeAll(keepingCapacity: true)
+
+                if total.isFinite {
+                    let p = pStart + min(got / total, 1.0) * (pEnd - pStart)
+                    if p - reportedPct >= 0.01 {
+                        reportedPct = p
+                        await MainActor.run { self.downloadProgress = p }
+                    }
+                }
             }
         }
-        if !buf.isEmpty { fh.write(buf) }
+        if !buf.isEmpty {
+            fh.write(buf)
+            got += Double(buf.count)
+        }
         await MainActor.run { self.downloadProgress = pEnd }
     }
 }
