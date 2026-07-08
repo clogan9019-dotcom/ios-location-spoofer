@@ -26,6 +26,12 @@ jobs:
           git clone --depth=1 https://github.com/opa334/ChOma.git /tmp/ChOma
           cp /tmp/ChOma/src/*.h LocationSpoofer/headers/
 
+      - name: Ensure Secrets.swift exists (git-ignored) for build
+        run: |
+          if [ ! -f LocationSpoofer/Secrets.swift ]; then
+            cp LocationSpoofer/Secrets.swift.example LocationSpoofer/Secrets.swift
+          fi
+
       - name: Select Xcode
         run: |
           # macos-14 images ship with multiple Xcodes; pick any 16.x that exists.
