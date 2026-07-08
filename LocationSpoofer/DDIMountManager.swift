@@ -101,7 +101,7 @@ final class DDIMountManager: ObservableObject {
             let dtProc    = procbyname("DTServiceHub")
             let mounted   = xpcStatus == kDDIStatusMounted || dtProc != 0
             filelog(String(format: "[DDI] check: xpc=%d DTServiceHub=%@",
-                           xpcStatus.rawValue, dtProc != 0 ? "running" : "absent"))
+                           xpcStatus, dtProc != 0 ? "running" : "absent"))
             await MainActor.run {
                 if mounted {
                     self.ddiStatus    = .mounted
