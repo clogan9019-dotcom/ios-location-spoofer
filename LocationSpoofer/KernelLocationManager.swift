@@ -670,7 +670,7 @@ final class KernelLocationManager: NSObject, ObservableObject {
                         try FileManager.default.moveItem(at: loc, to: URL(fileURLWithPath: path))
                         ok = true
                     } catch {
-                        flog("attemptDDIMountSync: move failed: \(error.localizedDescription)")
+                        self.flog("attemptDDIMountSync: move failed: \(error.localizedDescription)")
                     }
                 }
                 task.resume()
