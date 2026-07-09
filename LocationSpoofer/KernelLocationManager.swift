@@ -254,9 +254,6 @@ final class KernelLocationManager: NSObject, ObservableObject {
             DispatchQueue.main.async {
                 self.isRunning = false; self.exploitReady = true
                 self.progress = 1.0; self.status = "Kernel ready"
-                // The resolved t1sz_boot is written to UserDefaults by
-                // offsets.m during ds_run_safe(). Reload on the main thread
-                // so Settings reflects the auto-detected value.
                 UserDefaults.standard.synchronize()
                 self.loadT1szDisplay()
                 self.flog("t1sz after exploit: \(self.t1szBootDisplay)")
@@ -323,7 +320,6 @@ final class KernelLocationManager: NSObject, ObservableObject {
         flog("disconnect: clearing spoof")
         stopSpoofTimer()
 
-        // Close any active simulatelocation service session first.
         let simClearRet = simlocation_clear()
         flog("disconnect: simlocation_clear() = \(simClearRet)")
 
@@ -355,68 +351,39 @@ final class KernelLocationManager: NSObject, ObservableObject {
             self.timerTickCount += 1
             let tick = self.timerTickCount
 
-            // ── Fast path: simulatelocation session ──────────────────────
-            // If we already have an active session with the service, just
-            // resend the coordinates. This is the StikDebug approach — no
-            // plist writes, no cfprefsd involved at all.
             if simlocation_is_active() != 0 {
                 let simRet = simlocation_set(self.spoofLat, self.spoofLon)
                 filelog(String(format: "[tick %d] simlocation_set=%.6f,%.6f ret=%d (%@)",
                                tick, self.spoofLat, self.spoofLon, simRet,
                                simRet == 0 ? "OK" : "session dead"))
                 if simRet == 0 { return }
-                filelog(String(format: "[tick %d] simlocation session died — falling back to plist", tick))
             }
 
-            // ── Plist write ──────────────────────────────────────────────
-            filelog(String(format: "[tick %d] spoofTimer: writing plist lat=%.6f lon=%.6f",
+            filelog(String(format: "[tick %d] writing plist lat=%.6f lon=%.6f",
                            tick, self.spoofLat, self.spoofLon))
             let writeOk = self.writeSpoofPlist(lat: self.spoofLat, lon: self.spoofLon, enabled: true)
-            filelog(String(format: "[tick %d] writeSpoofPlist = %@", tick, writeOk ? "OK" : "FAILED"))
             guard writeOk else { return }
-
             self.writeSpoofViaCFPrefs(lat: self.spoofLat, lon: self.spoofLon, enabled: true)
 
-            // ── RC reload ────────────────────────────────────────────────
             let rcRet = rc_locationd_reload_plist()
-            filelog(String(format: "[tick %d] rc_locationd_reload_plist = %d (%@)",
-                           tick, rcRet, rcRet == 0 ? "SUCCESS" : "FAIL"))
             if rcRet == 0 { return }
 
-            // ── notify_locationd_direct (cross-process Darwin notify) ───
             let notifyRet = notify_locationd_direct()
-            filelog(String(format: "[tick %d] notify_locationd_direct = %d (%@)",
-                           tick, notifyRet, notifyRet == 0 ? "ok" : "failed"))
             if notifyRet == 0 { return }
 
-            // ── cfprefsd flush (DS-native, kills cache) ──────────────────
-            // Last resort before locationd restart: kill cfprefsd so it
-            // restarts with a clean cache, then notify locationd.
             let now = Date()
             let elapsed = now.timeIntervalSince(self.lastTimerRestart)
-            guard elapsed > self.kTimerRestartInterval else {
-                filelog(String(format: "[tick %d] all fallbacks failed — cooldown (%.0fs left)",
-                               tick, self.kTimerRestartInterval - elapsed))
-                return
-            }
+            guard elapsed > self.kTimerRestartInterval else { return }
             self.lastTimerRestart = now
 
-            filelog(String(format: "[tick %d] RC+notify failed — trying cfprefsd flush", tick))
             let flushRet = flush_cfprefsd_and_signal_locationd()
-            filelog(String(format: "[tick %d] flush_cfprefsd_and_signal_locationd = %d (%@)",
-                           tick, flushRet, flushRet == 0 ? "OK" : "FAIL"))
             if flushRet == 0 { return }
 
-            // ── locationd restart (last resort) ──────────────────────────
             let preProc = procbyname("locationd")
             let prePid  = preProc != 0 ? pid_t(bitPattern: UInt32(ds_kread32(preProc + UInt64(off_proc_p_pid)))) : 0
-            filelog(String(format: "[tick %d] restarting locationd (PID %d) — all methods failed", tick, prePid))
-            self.restartLocationd(reason: "spoof timer tick \(tick): RC=\(rcRet) notify=\(notifyRet) flush=\(flushRet)")
+            filelog(String(format: "[tick %d] restarting locationd (PID %d)", tick, prePid))
+            self.restartLocationd(reason: "tick \(tick)")
             Thread.sleep(forTimeInterval: 3.0)
-            let postProc = procbyname("locationd")
-            let postPid  = postProc != 0 ? pid_t(bitPattern: UInt32(ds_kread32(postProc + UInt64(off_proc_p_pid)))) : 0
-            filelog(String(format: "[tick %d] locationd after restart: PID %d (%@)",
-                           tick, postPid, postPid != prePid ? "new ✓" : "SAME — restart may have failed"))
         }
         timer.resume()
         spoofTimer = timer
@@ -431,103 +398,59 @@ final class KernelLocationManager: NSObject, ObservableObject {
     // MARK: - Core spoof activation
 
     private func activateSpoof(lat: Double, lon: Double) {
-        // Whole spoof activation runs under a Swift do/catch + ObjC @try to
-        // make sure any unexpected ObjC exception, signal (heap-patch SIGBUS),
-        // or network error doesn't crash the app — we log and fall through
-        // gracefully instead.
-        do {
-            try activateSpoofGuarded(lat: lat, lon: lon)
-        } catch {
-            flog("activateSpoof: caught error: \(error.localizedDescription)")
-            DispatchQueue.main.async {
-                self.status = "Spoof error: \(error.localizedDescription)"
-            }
-            filelog_flush()
-        }
-    }
-
-    private func activateSpoofGuarded(lat: Double, lon: Double) throws {
         flog(String(format: "activateSpoof: %.5f, %.5f", lat, lon))
 
-        // ── PRIMARY: StikDebug-style com.apple.dt.simulatelocation ────────
-        // We connect directly to lockdownd on the device (after Darksword
-        // gives us krw/sbx_escape we can open its AF_UNIX socket), issue
-        // StartService("com.apple.dt.simulatelocation"), open the TCP port it
-        // returns on loopback, and send the identical 20-byte binary payload
-        // StikDebug/Xcode/idevicesetlocation send over USB usbmuxd. No Mac,
-        // no USB, no tunnel, no VPN — we go straight to lockdownd like Claude
-        // said Lara could.
-        let simRet = simlocation_set(lat, lon)
-        flog(String(format: "activateSpoof: simlocation_set() = %d", simRet))
-
-        if simRet == 0 {
-            flog("activateSpoof: simlocation OK — lockdownd → sim-svc → locationd (primary StikDebug path)")
-            if !didActivateSpoof { Thread.sleep(forTimeInterval: 0.3) }
-            didActivateSpoof = true
-            startSpoofTimer()
-            DispatchQueue.main.async {
-                self.isConnected = true
-                self.status = String(format: "Spoofing %.5f, %.5f (sim-svc)", lat, lon)
+        // If simlocation service is already up (e.g. DDI mounted via Xcode),
+        // send the binary payload straight through lockdownd. We don't try to
+        // download/mount the DDI ourselves — iOS 17+ requires device-specific
+        // TSS signing.
+        let simAlreadyUp = (simlocation_is_active() != 0) || (procbyname("DTServiceHub") != 0)
+        if simAlreadyUp {
+            let simRet = simlocation_set(lat, lon)
+            flog(String(format: "activateSpoof: simlocation_set()=%d (DTServiceHub present)", simRet))
+            if simRet == 0 {
+                if !didActivateSpoof { Thread.sleep(forTimeInterval: 0.3) }
+                didActivateSpoof = true
+                startSpoofTimer()
+                DispatchQueue.main.async {
+                    self.isConnected = true
+                    self.status = String(format: "Spoofing %.5f, %.5f (sim-svc)", lat, lon)
+                }
+                filelog_flush()
+                LogUploader.shared.uploadLog()
+                return
             }
-            filelog_flush()
-            LogUploader.shared.uploadLog()
-            return
         }
 
-        // If simservice is unavailable that most likely means the DDI isn't
-        // mounted yet. Auto-mounting the DDI runs an ~80MB download and
-        // imagemounterd XPC — on some devices/versions (e.g. A18 iOS 18.7.1
-        // where pre-personalised DDIs aren't yet published) that can fail
-        // and crash if invoked from the spoof codepath with an untrusted DDI.
-        // We try the Darksword-native path first and *don't* auto-mount the
-        // DDI from the spoof button. Users who want the sim-svc path can tap
-        // "Download & Mount DDI" in Settings first; otherwise we go straight
-        // to the krw plist+heap+RC flow which is self-contained and can't
-        // trigger image-mounter crashes.
-        flog("activateSpoof: sim-svc not available (DDI not mounted) — using Darksword plist+heap-patch+RC flow")
+        flog("activateSpoof: using Darksword VFS+heap-patch+RC path")
 
-        // ── Step 2: VFS plist write ─────────────────────────────────────
+        // Step 2 (README): write plist (VFS if available, else direct disk write)
         let writeOk = writeSpoofPlist(lat: lat, lon: lon, enabled: true)
         if !writeOk {
-            flog("activateSpoof: plist write failed — cannot proceed")
+            flog("activateSpoof: plist write failed")
             LogUploader.shared.uploadLog()
             return
         }
         writeSpoofViaCFPrefs(lat: lat, lon: lon, enabled: true)
 
-        // ── Step 3: In-memory heap patch of locationd's coordinate pairs
-        flog("activateSpoof: scanning locationd RW regions for (lat,lon) double pairs to overwrite (Darksword krw)")
+        // Step 3 (README): in-memory heap patch of locationd's coordinate pairs
+        flog("activateSpoof: patching locationd memory")
         let patched = locationd_patch_coordinates(lat, lon)
-        flog("activateSpoof: locationd_patch_coordinates patched \(patched) pair(s) in memory")
+        flog("activateSpoof: patched \(patched) pair(s)")
 
-        // ── Step 4: RemoteCall reload from inside locationd ────────────
-        flog("activateSpoof: RemoteCall post pref-reload notification inside locationd")
+        // Step 4 (README): RemoteCall inside locationd to post prefsChanged
+        flog("activateSpoof: RemoteCall post notification inside locationd")
         let rcRet = rc_locationd_reload_plist()
-        flog(String(format: "activateSpoof: rc_locationd_reload_plist() = %d (%@)",
-                    rcRet, rcRet == 0 ? "SUCCESS" : "FAIL"))
-
         if rcRet == 0 {
-            flog("activateSpoof: RC reload succeeded")
+            flog("activateSpoof: RC reload OK")
             if !didActivateSpoof { Thread.sleep(forTimeInterval: 0.5) }
         } else {
-            // RC failed — kill cfprefsd to purge its stale cache
-            flog("activateSpoof: RC failed (\(rcRet)) — trying cfprefsd cache flush")
+            flog("activateSpoof: RC failed (\(rcRet)) — flushing cfprefsd")
             let flushRet = flush_cfprefsd_and_signal_locationd()
-            flog(String(format: "activateSpoof: flush_cfprefsd_and_signal_locationd() = %d (%@)",
-                        flushRet, flushRet == 0 ? "OK — cfprefsd restarted, locationd signalled" : "FAIL"))
-
             if flushRet != 0 {
-                // All DS-based methods failed — restart locationd as last resort
                 flog("activateSpoof: cfprefsd flush failed — restarting locationd")
-                let preProc = procbyname("locationd")
-                let prePid  = preProc != 0 ? pid_t(bitPattern: UInt32(ds_kread32(preProc + UInt64(off_proc_p_pid)))) : 0
-                flog("activateSpoof: locationd PID before restart = \(prePid)")
-                restartLocationd(reason: "activating spoof: RC=\(rcRet) flush=\(flushRet)")
-                flog("activateSpoof: waiting 3s for locationd to restart...")
+                restartLocationd(reason: "activateSpoof")
                 Thread.sleep(forTimeInterval: 3.0)
-                let postProc = procbyname("locationd")
-                let postPid  = postProc != 0 ? pid_t(bitPattern: UInt32(ds_kread32(postProc + UInt64(off_proc_p_pid)))) : 0
-                flog("activateSpoof: locationd after restart: PID \(postPid) (\(postPid != prePid ? "NEW ✓" : "SAME — restart may have failed"))")
             }
         }
 
@@ -555,7 +478,7 @@ final class KernelLocationManager: NSObject, ObservableObject {
         CFPreferencesSetValue("SimulatedLongitude" as CFString,
                               enabled ? NSNumber(value: lon) : nil, domain, user, host)
         let synced = CFPreferencesSynchronize(domain, user, host)
-        flog(String(format: "writeSpoofViaCFPrefs: sync=%@, enabled=%@, lat=%.6f, lon=%.6f",
+        flog(String(format: "writeSpoofViaCFPrefs: sync=%@ enabled=%@ lat=%.6f lon=%.6f",
                     synced ? "OK" : "FAILED", enabled ? "YES" : "NO", lat, lon))
         return synced
     }
@@ -578,29 +501,23 @@ final class KernelLocationManager: NSObject, ObservableObject {
 
         if exploitReady && vfs_isready() {
             let tmp = NSTemporaryDirectory() + "lspoof_\(arc4random()).plist"
-            var vfsOk = false
             do {
                 try data.write(to: URL(fileURLWithPath: tmp))
                 let r = vfs_overwritefile(plistPath, tmp)
-                vfsOk = (r == 0)
-                flog(String(format: "writeSpoofPlist(VFS): r=%d (%@) lat=%.6f lon=%.6f",
-                            r, vfsOk ? "OK" : "FAIL", lat, lon))
+                let ok = (r == 0)
+                flog(String(format: "writeSpoofPlist(VFS): r=%d (%@)", r, ok ? "OK" : "FAIL"))
+                try? FileManager.default.removeItem(atPath: tmp)
+                if ok { return true }
             } catch {
-                flog("writeSpoofPlist(VFS): temp write failed: \(error.localizedDescription)")
+                flog("writeSpoofPlist(VFS): \(error.localizedDescription)")
             }
-            try? FileManager.default.removeItem(atPath: tmp)
-            if vfsOk { return true }
-            flog("writeSpoofPlist(VFS): failed — falling back to direct write")
         }
 
         do {
             let dir = (plistPath as NSString).deletingLastPathComponent
-            try FileManager.default.createDirectory(
-                atPath: dir, withIntermediateDirectories: true, attributes: nil)
+            try FileManager.default.createDirectory(atPath: dir,
+               withIntermediateDirectories: true, attributes: nil)
             try data.write(to: URL(fileURLWithPath: plistPath), options: [.atomic])
-            let onDiskSize = (try? FileManager.default.attributesOfItem(atPath: plistPath)[.size] as? Int) ?? -1
-            flog(String(format: "writeSpoofPlist(direct): wrote %d bytes enabled=%@ lat=%.6f lon=%.6f",
-                        onDiskSize, enabled ? "YES" : "NO", lat, lon))
             return true
         } catch {
             flog("writeSpoofPlist: FAILED — \(error.localizedDescription)")
@@ -610,153 +527,24 @@ final class KernelLocationManager: NSObject, ObservableObject {
 
     private func restartLocationd(reason: String) {
         flog("restartLocationd: \(reason)")
-
-        flog("restartLocationd: calling crashproc(locationd) via kernel r/w")
-        let kret = crashproc("locationd")
-        if kret == 0 {
-            flog("restartLocationd: crashproc() succeeded — launchd will respawn locationd")
-            return
+        if crashproc("locationd") == 0 { return }
+        if let proc = procbyname("locationd") as? UInt64, proc != 0 {
+            let pid = pid_t(bitPattern: UInt32(ds_kread32(proc + UInt64(off_proc_p_pid))))
+            if pid > 1 { kill(pid, SIGKILL); return }
         }
-        flog("restartLocationd: crashproc() returned \(kret) — trying userspace kill")
-
-        let locationdProc = procbyname("locationd")
-        if locationdProc != 0 {
-            let pid = pid_t(bitPattern: UInt32(ds_kread32(locationdProc + UInt64(off_proc_p_pid))))
-            flog("restartLocationd: userspace kill(\(pid), SIGKILL)")
-            let ret = kill(pid, SIGKILL)
-            if ret == 0 { flog("restartLocationd: kill() succeeded"); return }
-            flog("restartLocationd: kill() = \(ret) errno=\(errno)")
-        } else {
-            flog("restartLocationd: procbyname returned 0")
-        }
-
-        flog("restartLocationd: trying launchctl kickstart -k system/com.apple.locationd")
-        let lcret = restart_locationd_via_launchctl()
-        flog("restartLocationd: launchctl returned \(lcret)")
-    }
-
-    // MARK: - On-demand DDI mount (for the StikDebug simlocation path)
-    //
-    // If simlocation_set fails because com.apple.dt.simulatelocation isn't
-    // registered yet, we attempt a full DDI download+mount inline (same flow
-    // the Settings tab exposes) and return true if ddi_check_status() reports
-    // mounted afterward. This lets the Spoof toggle auto-install the DDI the
-    // first time it's needed, just like Xcode does on a Mac.
-
-    private func attemptDDIMountSync() -> Bool {
-        // Already mounted?
-        if ddi_check_status() == DDI_STATUS_MOUNTED || procbyname("DTServiceHub") != 0 {
-            flog("attemptDDIMountSync: DDI already mounted — DTServiceHub present")
-            return true
-        }
-
-        let ddi = DDIMountManager.shared
-
-        // Detect iOS version.
-        let sysVer = UIDevice.current.systemVersion
-        flog("attemptDDIMountSync: iOS \(sysVer)")
-
-        let baseURL = "https://github.com/doronz88/DeveloperDiskImage/releases/download"
-        let ddiDir = NSTemporaryDirectory() + "ddi/"
-        let dmgPath = ddiDir + "DeveloperDiskImage.dmg"
-        let sigPath = ddiDir + "DeveloperDiskImage.dmg.signature"
-
-        do {
-            try FileManager.default.createDirectory(atPath: ddiDir,
-                                                    withIntermediateDirectories: true)
-        } catch {
-            flog("attemptDDIMountSync: could not create \(ddiDir): \(error.localizedDescription)")
-            return false
-        }
-
-        // Version candidates from most- to least-specific.
-        let parts = sysVer.split(separator: ".")
-        var candidates = [sysVer]
-        if parts.count >= 3 { candidates.append("\(parts[0]).\(parts[1])") }
-        if parts.count >= 2 { candidates.append("\(parts[0])") }
-
-        var downloaded = false
-        for tag in candidates {
-            let dmgURL = "\(baseURL)/iOS-\(tag)/DeveloperDiskImage.dmg"
-            let sigURL = "\(baseURL)/iOS-\(tag)/DeveloperDiskImage.dmg.signature"
-            flog("attemptDDIMountSync: trying tag iOS-\(tag)")
-
-            func syncDownload(_ urlStr: String, to path: String) -> Bool {
-                guard let url = URL(string: urlStr) else { return false }
-                let sem = DispatchSemaphore(value: 0)
-                var ok = false
-                let task = URLSession.shared.downloadTask(with: url) { loc, resp, err in
-                    defer { sem.signal() }
-                    guard let loc = loc,
-                          let http = resp as? HTTPURLResponse,
-                          http.statusCode == 200,
-                          err == nil else { return }
-                    do {
-                        if FileManager.default.fileExists(atPath: path) {
-                            try? FileManager.default.removeItem(atPath: path)
-                        }
-                        try FileManager.default.moveItem(at: loc, to: URL(fileURLWithPath: path))
-                        ok = true
-                    } catch {
-                        self.flog("attemptDDIMountSync: move failed: \(error.localizedDescription)")
-                    }
-                }
-                task.resume()
-                sem.wait()
-                return ok
-            }
-
-            if syncDownload(dmgURL, to: dmgPath) && syncDownload(sigURL, to: sigPath) {
-                let sz = (try? FileManager.default.attributesOfItem(atPath: dmgPath)[.size] as? Int) ?? 0
-                flog("attemptDDIMountSync: dmg downloaded (\(sz) bytes)")
-                if sz > 65536 { downloaded = true; break }
-            }
-            flog("attemptDDIMountSync: tag iOS-\(tag) not available — trying next")
-        }
-
-        guard downloaded else {
-            flog("attemptDDIMountSync: could not download DDI for iOS \(sysVer)")
-            return false
-        }
-
-        // Mount via imagemounterd XPC.
-        flog("attemptDDIMountSync: calling ddi_mount()...")
-        let ret = ddi_mount(dmgPath, sigPath)
-        flog("attemptDDIMountSync: ddi_mount() = \(ret)")
-        if ret != 0 {
-            let errStr = String(cString: ddi_last_error())
-            flog("attemptDDIMountSync: mount error: \(errStr)")
-        }
-
-        // Wait up to 6 s for DTServiceHub.
-        for i in 0..<20 {
-            Thread.sleep(forTimeInterval: 0.3)
-            if ddi_check_status() == DDI_STATUS_MOUNTED || procbyname("DTServiceHub") != 0 {
-                flog("attemptDDIMountSync: DDI active after \(i+1) polls")
-                // Refresh UI status on the main actor.
-                DispatchQueue.main.async { ddi.checkStatus() }
-                return true
-            }
-        }
-        DispatchQueue.main.async { ddi.checkStatus() }
-        flog("attemptDDIMountSync: DTServiceHub never appeared — mount may have failed")
-        return false
+        restart_locationd_via_launchctl()
     }
 }
 
-// MARK: - CLLocationManagerDelegate (background keep-alive)
+// MARK: - CLLocationManagerDelegate
 
 extension KernelLocationManager: CLLocationManagerDelegate {
     func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
-        let status = manager.authorizationStatus
-        if status == .authorizedAlways || status == .authorizedWhenInUse {
+        if manager.authorizationStatus == .authorizedAlways ||
+            manager.authorizationStatus == .authorizedWhenInUse {
             manager.startUpdatingLocation()
         }
     }
-
-    func locationManager(_ manager: CLLocationManager,
-                         didUpdateLocations locations: [CLLocation]) {}
-
-    func locationManager(_ manager: CLLocationManager,
-                         didFailWithError error: Error) {}
+    func locationManager(_: CLLocationManager, didUpdateLocations _: [CLLocation]) {}
+    func locationManager(_: CLLocationManager, didFailWithError _: Error) {}
 }
