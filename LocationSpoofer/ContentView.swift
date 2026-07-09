@@ -525,11 +525,11 @@ struct SettingsView: View {
     @State private var uploadResult: String? = nil
 
     private let presets: [(label: String, chip: String, hex: String)] = [
-        ("A12 / A13",        "iPhone XS – 11",        "0x19"),
-        ("A14 / A15",        "iPhone 12 – 13",        "0x19"),
-        ("A16+ / M-series",  "iPhone 14 Pro+ / iPad", "0x11"),
-        ("A17 Pro",          "iPhone 15 Pro",         "0x11"),
-        ("A18 / A18 Pro",    "iPhone 16 / 17",        "0x11"),
+        ("A12 / A13",        "iPhone XS – 11 / SE2",  "0x19"),
+        ("A14 / A15",        "iPhone 12 – 14",        "0x11"),
+        ("A16 / A17 Pro",    "iPhone 14 Pro – 15 Pro","0x11"),
+        ("A18 / A18 Pro",    "iPhone 16 – 17",        "0x11"),
+        ("M1 / M2 / M3",     "iPad Pro / Air / Mac",  "0x11"),
     ]
 
     var body: some View {

@@ -12,8 +12,13 @@ struct LocationSpooferApp: App {
         }
         .onChange(of: scenePhase) { _, phase in
             if phase == .background {
-                // Upload log whenever the app is sent to the background.
                 LogUploader.shared.uploadLog()
+            } else if phase == .active {
+                // Refresh the auto-detected t1sz_boot display when we come to
+                // the foreground (offsets.m writes the resolved value under
+                // kLaraT1sz during ds_run_safe()).
+                UserDefaults.standard.synchronize()
+                kernelManager.loadT1szDisplayFromMain()
             }
         }
     }

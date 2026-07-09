@@ -83,6 +83,11 @@ final class KernelLocationManager: NSObject, ObservableObject {
         }
     }
 
+    /// Main-thread helper for SwiftUI lifecycle callbacks.
+    func loadT1szDisplayFromMain() {
+        loadT1szDisplay()
+    }
+
     @discardableResult
     func setT1szBootOverride(_ hexString: String) -> Bool {
         let cleaned = hexString.trimmingCharacters(in: .whitespaces)
@@ -249,7 +254,12 @@ final class KernelLocationManager: NSObject, ObservableObject {
             DispatchQueue.main.async {
                 self.isRunning = false; self.exploitReady = true
                 self.progress = 1.0; self.status = "Kernel ready"
+                // The resolved t1sz_boot is written to UserDefaults by
+                // offsets.m during ds_run_safe(). Reload on the main thread
+                // so Settings reflects the auto-detected value.
+                UserDefaults.standard.synchronize()
                 self.loadT1szDisplay()
+                self.flog("t1sz after exploit: \(self.t1szBootDisplay)")
             }
             completion?(true)
         }
