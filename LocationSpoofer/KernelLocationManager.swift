@@ -421,36 +421,37 @@ final class KernelLocationManager: NSObject, ObservableObject {
     // MARK: - Core spoof activation
 
     private func activateSpoof(lat: Double, lon: Double) {
+        // Whole spoof activation runs under a Swift do/catch + ObjC @try to
+        // make sure any unexpected ObjC exception, signal (heap-patch SIGBUS),
+        // or network error doesn't crash the app — we log and fall through
+        // gracefully instead.
+        do {
+            try activateSpoofGuarded(lat: lat, lon: lon)
+        } catch {
+            flog("activateSpoof: caught error: \(error.localizedDescription)")
+            DispatchQueue.main.async {
+                self.status = "Spoof error: \(error.localizedDescription)"
+            }
+            filelog_flush()
+        }
+    }
+
+    private func activateSpoofGuarded(lat: Double, lon: Double) throws {
         flog(String(format: "activateSpoof: %.5f, %.5f", lat, lon))
 
         // ── PRIMARY: StikDebug-style com.apple.dt.simulatelocation ────────
-        // We connect directly to lockdownd (no usbmuxd needed — we're already
-        // on device after sbx_escape), issue StartService("com.apple.dt.
-        // simulatelocation"), open the TCP port it returns, and send the
-        // identical 20-byte binary payload Xcode/StikDebug send. This goes
-        // straight through DTServiceHub into locationd — cfprefsd is not
-        // involved at all, so the spoof applies instantly and survives
-        // settings resets. Claude says this is the Lara path.
-        var simRet = simlocation_set(lat, lon)
+        // We connect directly to lockdownd on the device (after Darksword
+        // gives us krw/sbx_escape we can open its AF_UNIX socket), issue
+        // StartService("com.apple.dt.simulatelocation"), open the TCP port it
+        // returns on loopback, and send the identical 20-byte binary payload
+        // StikDebug/Xcode/idevicesetlocation send over USB usbmuxd. No Mac,
+        // no USB, no tunnel, no VPN — we go straight to lockdownd like Claude
+        // said Lara could.
+        let simRet = simlocation_set(lat, lon)
         flog(String(format: "activateSpoof: simlocation_set() = %d", simRet))
 
-        // If the service isn't available yet, try one-shot auto-mounting the
-        // DDI (the DeveloperDiskImage provides com.apple.dt.simulatelocation).
-        // This mirrors exactly what StikDebug does from the Mac, just without
-        // the USB/tunnel hop.
-        if simRet != 0 {
-            flog("activateSpoof: sim-svc unavailable — attempting on-demand DDI mount then retrying")
-            let mounted = attemptDDIMountSync()
-            if mounted {
-                flog("activateSpoof: DDI mounted, retrying simlocation_set()")
-                Thread.sleep(forTimeInterval: 1.0) // let DTServiceHub come up
-                simRet = simlocation_set(lat, lon)
-                flog(String(format: "activateSpoof: retry simlocation_set() = %d", simRet))
-            }
-        }
-
         if simRet == 0 {
-            flog("activateSpoof: simlocation OK — StikDebug path active (lockdownd → sim-svc → locationd)")
+            flog("activateSpoof: simlocation OK — lockdownd → sim-svc → locationd (primary StikDebug path)")
             if !didActivateSpoof { Thread.sleep(forTimeInterval: 0.3) }
             didActivateSpoof = true
             startSpoofTimer()
@@ -463,7 +464,17 @@ final class KernelLocationManager: NSObject, ObservableObject {
             return
         }
 
-        flog("activateSpoof: sim-svc unavailable — using Darksword plist+heap-patch+RC flow (README steps 2-4)")
+        // If simservice is unavailable that most likely means the DDI isn't
+        // mounted yet. Auto-mounting the DDI runs an ~80MB download and
+        // imagemounterd XPC — on some devices/versions (e.g. A18 iOS 18.7.1
+        // where pre-personalised DDIs aren't yet published) that can fail
+        // and crash if invoked from the spoof codepath with an untrusted DDI.
+        // We try the Darksword-native path first and *don't* auto-mount the
+        // DDI from the spoof button. Users who want the sim-svc path can tap
+        // "Download & Mount DDI" in Settings first; otherwise we go straight
+        // to the krw plist+heap+RC flow which is self-contained and can't
+        // trigger image-mounter crashes.
+        flog("activateSpoof: sim-svc not available (DDI not mounted) — using Darksword plist+heap-patch+RC flow")
 
         // ── Step 2: VFS plist write ─────────────────────────────────────
         let writeOk = writeSpoofPlist(lat: lat, lon: lon, enabled: true)
