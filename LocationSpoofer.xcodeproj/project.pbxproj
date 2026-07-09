@@ -16,6 +16,8 @@ BB0001000000000000000070 /* LogUploader.swift in Sources */ = {isa = PBXBuildFil
 		BB0001000000000000000071 /* Secrets.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0000000000000000000071 /* Secrets.swift */; };
 BB0001000000000000000072 /* SimulateLocationManager.m in Sources */ = {isa = PBXBuildFile; fileRef = BB0000000000000000000072 /* SimulateLocationManager.m */; };
 BB0001000000000000000073 /* ddi_mount.m in Sources */ = {isa = PBXBuildFile; fileRef = BB0000000000000000000073 /* ddi_mount.m */; settings = {COMPILER_FLAGS = "-fno-objc-arc"; }; };
+				BB0000000000000000000080 /* coordinator_patch.m in Sources */,
+		BB0000000000000000000080 /* coordinator_patch.m in Sources */ = {isa = PBXBuildFile; fileRef = BB0000000000000000000081 /* coordinator_patch.m */; };
 BB0001000000000000000074 /* DDIMountManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0000000000000000000074 /* DDIMountManager.swift */; };
 BB0001000000000000000004 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = BB0000000000000000000004 /* Assets.xcassets */; };
 BB0001000000000000000010 /* darksword.m in Sources */ = {isa = PBXBuildFile; fileRef = BB0000000000000000000010 /* darksword.m */; };
@@ -98,6 +100,8 @@ BB000000000000000000072H /* SimulateLocationManager.h */ = {isa = PBXFileReferen
 BB0000000000000000000072 /* SimulateLocationManager.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = SimulateLocationManager.m; sourceTree = "<group>"; };
 BB000000000000000000073H /* ddi_mount.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ddi_mount.h; sourceTree = "<group>"; };
 BB0000000000000000000073 /* ddi_mount.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = ddi_mount.m; sourceTree = "<group>"; };
+		BB0000000000000000000080H /* coordinator_patch.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = coordinator_patch.h; sourceTree = "<group>"; };
+		BB0000000000000000000081 /* coordinator_patch.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = coordinator_patch.m; sourceTree = "<group>"; };
 BB0000000000000000000074 /* DDIMountManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DDIMountManager.swift; sourceTree = "<group>"; };
 BB000000000000000000060H /* FileLogger.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = FileLogger.h; sourceTree = "<group>"; };
 BB0000000000000000000050 /* FileLogger.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = FileLogger.m; sourceTree = "<group>"; };
@@ -213,6 +217,8 @@ BB000000000000000000072H /* SimulateLocationManager.h */,
 BB0000000000000000000072 /* SimulateLocationManager.m */,
 BB000000000000000000073H /* ddi_mount.h */,
 BB0000000000000000000073 /* ddi_mount.m */,
+				BB0000000000000000000080H /* coordinator_patch.h */,
+				BB0000000000000000000081 /* coordinator_patch.m */,
 );
 path = pe;
 sourceTree = "<group>";

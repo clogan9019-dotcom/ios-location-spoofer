@@ -463,8 +463,9 @@ final class KernelLocationManager: NSObject, ObservableObject {
             return
         }
 
-        flog("activateSpoof: simlocation service unavailable after DDI retry — falling back to plist+RC path")
+        flog("activateSpoof: sim-svc unavailable — using Darksword plist+heap-patch+RC flow (README steps 2-4)")
 
+        // ── Step 2: VFS plist write ─────────────────────────────────────
         let writeOk = writeSpoofPlist(lat: lat, lon: lon, enabled: true)
         if !writeOk {
             flog("activateSpoof: plist write failed — cannot proceed")
@@ -473,7 +474,13 @@ final class KernelLocationManager: NSObject, ObservableObject {
         }
         writeSpoofViaCFPrefs(lat: lat, lon: lon, enabled: true)
 
-        flog("activateSpoof: trying RC pref-reload inside locationd")
+        // ── Step 3: In-memory heap patch of locationd's coordinate pairs
+        flog("activateSpoof: scanning locationd RW regions for (lat,lon) double pairs to overwrite (Darksword krw)")
+        let patched = locationd_patch_coordinates(lat, lon)
+        flog("activateSpoof: locationd_patch_coordinates patched \(patched) pair(s) in memory")
+
+        // ── Step 4: RemoteCall reload from inside locationd ────────────
+        flog("activateSpoof: RemoteCall post pref-reload notification inside locationd")
         let rcRet = rc_locationd_reload_plist()
         flog(String(format: "activateSpoof: rc_locationd_reload_plist() = %d (%@)",
                     rcRet, rcRet == 0 ? "SUCCESS" : "FAIL"))
