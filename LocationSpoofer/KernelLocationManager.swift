@@ -423,21 +423,34 @@ final class KernelLocationManager: NSObject, ObservableObject {
     private func activateSpoof(lat: Double, lon: Double) {
         flog(String(format: "activateSpoof: %.5f, %.5f", lat, lon))
 
-        // ── PRIMARY: StikDebug simulatelocation service approach ──────────
-        // Mirrors StikDebug (StephenDev0/StikDebug) exactly:
-        //   StikDebug: tunnel_create_rppairing -> remote_server_connect_rsd
-        //              -> location_simulation_new -> location_simulation_set
-        //   Here:      lockdown.sock -> StartService(simulatelocation)
-        //              -> 127.0.0.1:<port> -> binary protocol
-        //
-        // Bypasses cfprefsd entirely — locationd is told directly.
-        // Requires DDI mounted (DTServiceHub must be running).
-        let simRet = simlocation_set(lat, lon)
-        flog(String(format: "activateSpoof: simlocation_set() = %d (%@)",
-                    simRet,
-                    simRet == 0 ? "OK — locationd told directly, cfprefsd bypassed"
-                                : "FAILED (code \(simRet)) — DDI not mounted or iOS 17+ RSD required"))
+        // ── PRIMARY: StikDebug-style com.apple.dt.simulatelocation ────────
+        // We connect directly to lockdownd (no usbmuxd needed — we're already
+        // on device after sbx_escape), issue StartService("com.apple.dt.
+        // simulatelocation"), open the TCP port it returns, and send the
+        // identical 20-byte binary payload Xcode/StikDebug send. This goes
+        // straight through DTServiceHub into locationd — cfprefsd is not
+        // involved at all, so the spoof applies instantly and survives
+        // settings resets. Claude says this is the Lara path.
+        var simRet = simlocation_set(lat, lon)
+        flog(String(format: "activateSpoof: simlocation_set() = %d", simRet))
+
+        // If the service isn't available yet, try one-shot auto-mounting the
+        // DDI (the DeveloperDiskImage provides com.apple.dt.simulatelocation).
+        // This mirrors exactly what StikDebug does from the Mac, just without
+        // the USB/tunnel hop.
+        if simRet != 0 {
+            flog("activateSpoof: sim-svc unavailable — attempting on-demand DDI mount then retrying")
+            let mounted = attemptDDIMountSync()
+            if mounted {
+                flog("activateSpoof: DDI mounted, retrying simlocation_set()")
+                Thread.sleep(forTimeInterval: 1.0) // let DTServiceHub come up
+                simRet = simlocation_set(lat, lon)
+                flog(String(format: "activateSpoof: retry simlocation_set() = %d", simRet))
+            }
+        }
+
         if simRet == 0 {
+            flog("activateSpoof: simlocation OK — StikDebug path active (lockdownd → sim-svc → locationd)")
             if !didActivateSpoof { Thread.sleep(forTimeInterval: 0.3) }
             didActivateSpoof = true
             startSpoofTimer()
@@ -450,8 +463,7 @@ final class KernelLocationManager: NSObject, ObservableObject {
             return
         }
 
-        // ── FALLBACK: plist + RC + cfprefsd flush ────────────────────────
-        flog("activateSpoof: simulatelocation unavailable — using plist+RC fallback")
+        flog("activateSpoof: simlocation service unavailable after DDI retry — falling back to plist+RC path")
 
         let writeOk = writeSpoofPlist(lat: lat, lon: lon, enabled: true)
         if !writeOk {
@@ -593,6 +605,114 @@ final class KernelLocationManager: NSObject, ObservableObject {
         flog("restartLocationd: trying launchctl kickstart -k system/com.apple.locationd")
         let lcret = restart_locationd_via_launchctl()
         flog("restartLocationd: launchctl returned \(lcret)")
+    }
+
+    // MARK: - On-demand DDI mount (for the StikDebug simlocation path)
+    //
+    // If simlocation_set fails because com.apple.dt.simulatelocation isn't
+    // registered yet, we attempt a full DDI download+mount inline (same flow
+    // the Settings tab exposes) and return true if ddi_check_status() reports
+    // mounted afterward. This lets the Spoof toggle auto-install the DDI the
+    // first time it's needed, just like Xcode does on a Mac.
+
+    private func attemptDDIMountSync() -> Bool {
+        // Already mounted?
+        if ddi_check_status() == DDI_STATUS_MOUNTED || procbyname("DTServiceHub") != 0 {
+            flog("attemptDDIMountSync: DDI already mounted — DTServiceHub present")
+            return true
+        }
+
+        let ddi = DDIMountManager.shared
+
+        // Detect iOS version.
+        let sysVer = UIDevice.current.systemVersion
+        flog("attemptDDIMountSync: iOS \(sysVer)")
+
+        let baseURL = "https://github.com/doronz88/DeveloperDiskImage/releases/download"
+        let ddiDir = NSTemporaryDirectory() + "ddi/"
+        let dmgPath = ddiDir + "DeveloperDiskImage.dmg"
+        let sigPath = ddiDir + "DeveloperDiskImage.dmg.signature"
+
+        do {
+            try FileManager.default.createDirectory(atPath: ddiDir,
+                                                    withIntermediateDirectories: true)
+        } catch {
+            flog("attemptDDIMountSync: could not create \(ddiDir): \(error.localizedDescription)")
+            return false
+        }
+
+        // Version candidates from most- to least-specific.
+        let parts = sysVer.split(separator: ".")
+        var candidates = [sysVer]
+        if parts.count >= 3 { candidates.append("\(parts[0]).\(parts[1])") }
+        if parts.count >= 2 { candidates.append("\(parts[0])") }
+
+        var downloaded = false
+        for tag in candidates {
+            let dmgURL = "\(baseURL)/iOS-\(tag)/DeveloperDiskImage.dmg"
+            let sigURL = "\(baseURL)/iOS-\(tag)/DeveloperDiskImage.dmg.signature"
+            flog("attemptDDIMountSync: trying tag iOS-\(tag)")
+
+            func syncDownload(_ urlStr: String, to path: String) -> Bool {
+                guard let url = URL(string: urlStr) else { return false }
+                let sem = DispatchSemaphore(value: 0)
+                var ok = false
+                let task = URLSession.shared.downloadTask(with: url) { loc, resp, err in
+                    defer { sem.signal() }
+                    guard let loc = loc,
+                          let http = resp as? HTTPURLResponse,
+                          http.statusCode == 200,
+                          err == nil else { return }
+                    do {
+                        if FileManager.default.fileExists(atPath: path) {
+                            try? FileManager.default.removeItem(atPath: path)
+                        }
+                        try FileManager.default.moveItem(at: loc, to: URL(fileURLWithPath: path))
+                        ok = true
+                    } catch {
+                        flog("attemptDDIMountSync: move failed: \(error.localizedDescription)")
+                    }
+                }
+                task.resume()
+                sem.wait()
+                return ok
+            }
+
+            if syncDownload(dmgURL, to: dmgPath) && syncDownload(sigURL, to: sigPath) {
+                let sz = (try? FileManager.default.attributesOfItem(atPath: dmgPath)[.size] as? Int) ?? 0
+                flog("attemptDDIMountSync: dmg downloaded (\(sz) bytes)")
+                if sz > 65536 { downloaded = true; break }
+            }
+            flog("attemptDDIMountSync: tag iOS-\(tag) not available — trying next")
+        }
+
+        guard downloaded else {
+            flog("attemptDDIMountSync: could not download DDI for iOS \(sysVer)")
+            return false
+        }
+
+        // Mount via imagemounterd XPC.
+        flog("attemptDDIMountSync: calling ddi_mount()...")
+        let ret = ddi_mount(dmgPath, sigPath)
+        flog("attemptDDIMountSync: ddi_mount() = \(ret)")
+        if ret != 0 {
+            let errStr = String(cString: ddi_last_error())
+            flog("attemptDDIMountSync: mount error: \(errStr)")
+        }
+
+        // Wait up to 6 s for DTServiceHub.
+        for i in 0..<20 {
+            Thread.sleep(forTimeInterval: 0.3)
+            if ddi_check_status() == DDI_STATUS_MOUNTED || procbyname("DTServiceHub") != 0 {
+                flog("attemptDDIMountSync: DDI active after \(i+1) polls")
+                // Refresh UI status on the main actor.
+                DispatchQueue.main.async { ddi.checkStatus() }
+                return true
+            }
+        }
+        DispatchQueue.main.async { ddi.checkStatus() }
+        flog("attemptDDIMountSync: DTServiceHub never appeared — mount may have failed")
+        return false
     }
 }
 
